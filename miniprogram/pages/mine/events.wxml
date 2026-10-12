@@ -1,0 +1,34 @@
+<view class="container sub-page">
+  <view class="state" wx:if="{{loading}}">
+    <view class="state-text">加载中…</view>
+  </view>
+
+  <block wx:elif="{{error}}">
+    <view class="state">
+      <view class="state-text">{{error}}</view>
+      <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="card"
+      data-id="{{item.event.id}}"
+      bindtap="goDetail"
+      hover-class="press"
+    >
+      <view class="row">
+        <view class="title">{{item.event.title}}</view>
+        <view class="chip">{{statusText[item.status] || item.status}}</view>
+      </view>
+      <view class="meta" wx:if="{{item.timeLabel}}">{{item.timeLabel}}</view>
+      <view class="meta">{{item.event.location || '地点待定'}}</view>
+    </view>
+    <view wx:if="{{!items.length}}" class="empty-block">
+      <view class="empty-title">暂无活动报名</view>
+      <view class="empty-desc">报名活动后，进度会显示在这里</view>
+    </view>
+  </block>
+</view>

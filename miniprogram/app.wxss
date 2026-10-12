@@ -1,0 +1,77 @@
+page {
+  --bg: #f7f5f1;
+  --ink: #14202b;
+  --muted: #6d7883;
+  --line: #e4e0d8;
+  --card: #ffffff;
+  --accent: #14202b;
+  --accent-soft: #ebe6dc;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.55;
+  box-sizing: border-box;
+}
+
+.container {
+  padding: 32rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.section-label {
+  font-size: 24rpx;
+  color: var(--muted);
+  letter-spacing: 2rpx;
+  margin: 24rpx 0 16rpx;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  padding: 20rpx 32rpx;
+  border: none;
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1rpx solid var(--line);
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.empty {
+  padding: 80rpx 24rpx;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-block {
+  padding: 120rpx 32rpx;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  color: var(--ink);
+  letter-spacing: 1rpx;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #9a9286;
+  line-height: 1.6;
+}
+
+.link {
+  color: var(--accent);
+}

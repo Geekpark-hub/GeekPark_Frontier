@@ -1,0 +1,38 @@
+<view class="container" wx:if="{{allowed}}">
+  <view class="field">
+    <view class="label">需求内容 *</view>
+    <textarea class="textarea" placeholder="描述你的需求场景" value="{{form.content}}" bindinput="onInput" data-key="content" />
+  </view>
+
+  <view class="field">
+    <view class="label">开始时间（可选）</view>
+    <picker mode="date" value="{{form.startAt}}" bindchange="onDate" data-key="startAt">
+      <view class="input picker">
+        <text>{{form.startAt || '选择日期'}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="field">
+    <view class="label">结束时间（可选）</view>
+    <picker mode="date" value="{{form.endAt}}" bindchange="onDate" data-key="endAt">
+      <view class="input picker">
+        <text>{{form.endAt || '选择日期'}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="field">
+    <view class="label">地点</view>
+    <input class="input" placeholder="如 San Francisco / Singapore" value="{{form.location}}" bindinput="onInput" data-key="location" />
+  </view>
+
+  <view class="field">
+    <view class="label">希望连接的人 / 资源</view>
+    <input class="input" placeholder="如 AI Founder, Investor" value="{{form.connectWith}}" bindinput="onInput" data-key="connectWith" />
+  </view>
+
+  <button class="btn-primary" bindtap="submit">提交</button>
+</view>

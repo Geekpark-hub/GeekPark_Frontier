@@ -1,0 +1,17 @@
+<view class="tabbar" wx:if="{{visible}}">
+  <view
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    class="item {{selected === index ? 'on' : ''}}"
+    data-path="{{item.pagePath}}"
+    data-index="{{index}}"
+    bindtap="onSwitch"
+  >
+    <image
+      class="icon"
+      src="{{selected === index ? item.selectedIconPath : item.iconPath}}"
+      mode="aspectFit"
+    />
+    <text class="label">{{item.text}}</text>
+  </view>
+</view>

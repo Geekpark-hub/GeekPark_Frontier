@@ -1,0 +1,89 @@
+<member-gate
+  visible="{{showGate}}"
+  mode="{{gateMode}}"
+  message="{{visitorMessage}}"
+  phone="{{checkedPhone}}"
+  bind:activated="onActivated"
+  bind:notmember="onNotMember"
+/>
+
+<view class="container mine-page" wx:if="{{!showGate && member}}">
+  <view class="profile">
+    <view class="texture" aria-hidden="true"></view>
+    <view class="profile-en">MEMBER</view>
+    <view class="name">{{member.name}}</view>
+    <view class="line" wx:if="{{member.company || member.title}}">
+      {{member.company}}{{member.company && member.title ? ' · ' : ''}}{{member.title}}
+    </view>
+    <view class="expire" wx:if="{{expiresLabel}}">{{expiresLabel}}</view>
+    <view class="badge">{{statusText[member.status] || member.status}}</view>
+  </view>
+
+  <view class="meta-block" wx:if="{{member.phone || hasLinks}}">
+    <view class="phone" wx:if="{{phoneMasked}}">手机 {{phoneMasked}}</view>
+    <view class="links" wx:if="{{hasLinks}}">
+      <view
+        class="link-line tap"
+        wx:if="{{member.linkedin}}"
+        data-url="{{member.linkedin}}"
+        bindtap="openLink"
+        hover-class="press"
+      >LinkedIn：{{member.linkedin}}</view>
+      <view
+        class="link-line tap"
+        wx:if="{{member.wechatMp}}"
+        data-kind="wechatMp"
+        data-text="{{member.wechatMp}}"
+        bindtap="openLink"
+        hover-class="press"
+      >公众号：{{member.wechatMp}}</view>
+      <view
+        class="link-line tap"
+        wx:if="{{member.xAccount}}"
+        data-url="{{member.xAccount}}"
+        data-text="{{member.xAccount}}"
+        bindtap="openLink"
+        hover-class="press"
+      >X：{{member.xAccount}}</view>
+      <view
+        class="link-line tap"
+        wx:if="{{member.youtube}}"
+        data-url="{{member.youtube}}"
+        bindtap="openLink"
+        hover-class="press"
+      >YouTube：{{member.youtube}}</view>
+      <view
+        class="link-line tap"
+        wx:if="{{member.bilibili}}"
+        data-url="{{member.bilibili}}"
+        bindtap="openLink"
+        hover-class="press"
+      >Bilibili：{{member.bilibili}}</view>
+    </view>
+  </view>
+
+  <view class="menu">
+    <view class="item" bindtap="go" data-url="/pages/mine/polls" hover-class="press">
+      <text>我的投票</text><text class="arrow">›</text>
+    </view>
+    <view class="item" bindtap="go" data-url="/pages/mine/events" hover-class="press">
+      <view class="item-left">
+        <text>我的活动</text>
+        <view class="dot" wx:if="{{eventsDot}}"></view>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+    <view class="item" bindtap="go" data-url="/pages/mine/requests" hover-class="press">
+      <view class="item-left">
+        <text>我的需求</text>
+        <view class="dot" wx:if="{{requestsDot}}"></view>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+    <view class="item accent" bindtap="go" data-url="/pages/mine/request-create" hover-class="press">
+      <text>提交需求</text><text class="arrow">›</text>
+    </view>
+  </view>
+
+  <view class="logout" bindtap="logout" hover-class="press">退出登录</view>
+</view>

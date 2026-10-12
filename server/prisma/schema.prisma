@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id                  String    @id @default(cuid())
+  openid              String?   @unique
+  name                String
+  company             String    @default("")
+  title               String    @default("")
+  phone               String    @unique
+  status              String    @default("active") // active | pending | expired
+  expiresAt           DateTime?
+  isAdmin             Boolean   @default(false)
+  isSuperAdmin        Boolean   @default(false)
+  /// JSON 字符串数组：后台菜单权限，如 ["members","feed"]；超管忽略此字段
+  adminMenus          String    @default("[]")
+  linkedin            String    @default("")
+  wechatMp            String    @default("")
+  xAccount            String    @default("")
+  youtube             String    @default("")
+  bilibili            String    @default("")
+  lastExpiryNoticeAt  DateTime?
+  expiryNoticeStage   String    @default("") // "" | 7 | 3 | 0
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  votes          Vote[]
+  registrations  Registration[]
+  requests       Request[]
+  postsCreated   FeedPost[]     @relation("PostAuthor")
+  relatedPosts   FeedPost[]     @relation("RelatedMember")
+  activityEvents ActivityEvent[]
+}
+
+model FeedPost {
+  id               String   @id @default(cuid())
+  title            String
+  content          String
+  publishedAt      DateTime
+  sourceUrl        String   @default("")
+  status           String   @default("draft") // draft | pending | published
+  sourceType       String   @default("manual") // manual | auto
+  authorId         String?
+  author           Member?  @relation("PostAuthor", fields: [authorId], references: [id])
+  relatedMemberId  String?
+  relatedMember    Member?  @relation("RelatedMember", fields: [relatedMemberId], references: [id])
+  dedupeKey        String?  @unique
+  aiReason         String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  multiSelect Boolean  @default(false)
+  startAt     DateTime
+  endAt       DateTime
+  status      String   @default("draft") // draft | published | ended
+  showVoters  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  options PollOption[]
+  votes   Vote[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text   String
+  sort   Int    @default(0)
+
+  votes Vote[]
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([pollId, memberId, optionId])
+  @@index([pollId, memberId])
+}
+
+model Event {
+  id               String    @id @default(cuid())
+  title            String
+  coverUrl         String    @default("")
+  description      String    @default("")
+  location         String    @default("")
+  agenda           String    @default("")
+  guests           String    @default("")
+  startAt          DateTime
+  endAt            DateTime
+  registerDeadline DateTime?
+  status           String    @default("draft") // draft | published | closed
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  registrations Registration[]
+}
+
+model Registration {
+  id           String   @id @default(cuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberId     String
+  member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  name         String
+  willAttend   Boolean  @default(true)
+  companions   String   @default("")
+  specialNeeds String   @default("")
+  status       String   @default("pending") // pending | approved | waitlist | cancelled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([eventId, memberId])
+}
+
+model Request {
+  id          String    @id @default(cuid())
+  memberId    String
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  content     String
+  startAt     DateTime?
+  endAt       DateTime?
+  location    String    @default("")
+  connectWith String    @default("")
+  status      String    @default("submitted") // submitted | processing | done
+  adminNote   String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model JobLog {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  summary   String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+}
+
+/// 会员行为埋点（轻量活跃分析）
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  /// app_open | page_view | poll_view | poll_vote | event_view | event_register | request_submit | open_source
+  event     String
+  path      String   @default("")
+  targetId  String   @default("")
+  /// JSON：额外业务字段
+  meta      String   @default("{}")
+  ip        String   @default("")
+  userAgent String   @default("")
+  /// JSON：品牌/机型/系统等
+  device    String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([memberId, createdAt])
+  @@index([event, createdAt])
+  @@index([createdAt])
+}

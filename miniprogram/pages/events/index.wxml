@@ -1,0 +1,43 @@
+<member-gate
+  visible="{{showGate}}"
+  mode="{{gateMode}}"
+  message="{{visitorMessage}}"
+  phone="{{checkedPhone}}"
+  bind:activated="onActivated"
+  bind:notmember="onNotMember"
+/>
+
+<view class="container events-page" wx:if="{{!showGate && ready}}">
+  <view class="tabs">
+    <view class="tab {{tab === 'upcoming' ? 'on' : ''}}" data-tab="upcoming" bindtap="switchTab">即将举行</view>
+    <view class="tab {{tab === 'past' ? 'on' : ''}}" data-tab="past" bindtap="switchTab">已结束</view>
+  </view>
+
+  <view
+    wx:for="{{list}}"
+    wx:key="id"
+    class="cover-card"
+    data-id="{{item.id}}"
+    bindtap="goDetail"
+    hover-class="press"
+  >
+    <image class="cover" src="{{item.coverDisplay}}" mode="aspectFill" lazy-load />
+    <view class="cover-veil"></view>
+    <view class="cover-body">
+      <view class="cover-tag" wx:if="{{tab === 'past'}}">已结束</view>
+      <view class="cover-tag" wx:elif="{{item.myStatus}}">{{statusText[item.myStatus]}}</view>
+      <view class="cover-title">{{item.title}}</view>
+      <view class="cover-meta">{{item.timeLabel}}</view>
+      <view class="cover-meta">{{item.location || '地点待定'}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty">
+    <view class="collage">
+      <image class="c c1" src="/assets/brand/scene-2.jpg" mode="aspectFill" />
+      <image class="c c2" src="/assets/brand/scene-1.jpg" mode="aspectFill" />
+      <image class="c c3" src="/assets/brand/scene-3.jpg" mode="aspectFill" />
+    </view>
+    <view class="empty-text">暂无活动</view>
+  </view>
+</view>

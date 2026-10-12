@@ -1,0 +1,55 @@
+<view class="gate" wx:if="{{visible}}">
+  <image class="gate-bg" src="/assets/brand/hero-light.jpg" mode="aspectFill" />
+  <view class="gate-veil"></view>
+  <view class="grain"></view>
+
+  <view class="stage">
+    <view class="logo-row">
+      <text class="logo-en">THE FRONT</text>
+      <text class="logo-bar">|</text>
+      <text class="logo-en">ER</text>
+    </view>
+    <view class="brand">前沿社</view>
+    <image class="exploring" src="/assets/brand/exploring.png" mode="widthFix" />
+    <view class="tagline">开启认知新可能</view>
+
+    <block wx:if="{{mode === 'needPhone'}}">
+      <view class="headline">验证会员身份</view>
+      <view class="desc">{{message || '授权微信绑定手机号即可进入，仅用于确认会员资格。'}}</view>
+
+      <button
+        class="cta"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+        hover-class="cta-hover"
+      >继续</button>
+      <view class="cta-hint">将请求微信手机号授权</view>
+    </block>
+
+    <block wx:elif="{{mode === 'inactive'}}">
+      <view class="headline">会员状态待处理</view>
+      <view class="desc">{{message || '会员状态暂不可用，请联系运营团队。'}}</view>
+      <view class="phone" wx:if="{{phoneMasked}}">{{phoneMasked}}</view>
+      <view class="cta-hint soft">如已续期，可更换手机号重新验证</view>
+      <button
+        class="cta"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+        hover-class="cta-hover"
+      >重新验证</button>
+    </block>
+
+    <block wx:else>
+      <view class="headline">未匹配到会员</view>
+      <view class="desc">{{message || '该手机号未匹配到会员信息，请更换手机号重试，或联系运营开通。'}}</view>
+      <view class="phone" wx:if="{{phoneMasked}}">{{phoneMasked}}</view>
+
+      <button
+        class="cta"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+        hover-class="cta-hover"
+      >更换手机号</button>
+    </block>
+  </view>
+</view>

@@ -1,0 +1,72 @@
+<view class="container detail state" wx:if="{{loading}}">
+  <view class="state-text">加载中…</view>
+</view>
+
+<view class="container detail state" wx:elif="{{error}}">
+  <view class="state-text">{{error}}</view>
+  <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+</view>
+
+<view class="container detail" wx:elif="{{event}}">
+  <view class="cover-wrap">
+    <image class="cover" src="{{coverUrl}}" mode="aspectFill" />
+  </view>
+
+  <view class="title">{{event.title}}</view>
+  <view class="meta-line">{{timeLabel}}</view>
+  <view class="meta-line">{{event.location || '地点待定'}}</view>
+  <view class="meta-line accent" wx:if="{{deadlineLabel}}">报名截止 {{deadlineLabel}}</view>
+
+  <view class="block">
+    <view class="label">活动介绍</view>
+    <view class="text">{{event.description || '暂无介绍'}}</view>
+  </view>
+
+  <view class="block" wx:if="{{agendaLines.length}}">
+    <view class="label">活动议程</view>
+    <view class="line-list">
+      <view wx:for="{{agendaLines}}" wx:key="*this" class="line-item">
+        <view class="dot"></view>
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="block" wx:if="{{guestLines.length}}">
+    <view class="label">嘉宾信息</view>
+    <view class="line-list">
+      <view wx:for="{{guestLines}}" wx:key="*this" class="line-item">
+        <view class="dot"></view>
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="block" wx:if="{{myRegistration && myRegistration.status !== 'cancelled'}}">
+    <view class="label">我的报名</view>
+    <view class="status-chip">{{statusText[myRegistration.status] || myRegistration.status}}</view>
+  </view>
+
+  <view class="block" wx:if="{{canRegister}}">
+    <view class="label">报名信息</view>
+    <view class="form-item">
+      <view class="form-label">姓名</view>
+      <input class="input" value="{{form.name}}" data-key="name" bindinput="onInput" />
+    </view>
+    <view class="form-item">
+      <view class="form-label">随行人员</view>
+      <input class="input" value="{{form.companions}}" data-key="companions" bindinput="onInput" placeholder="选填" />
+    </view>
+    <view class="form-item">
+      <view class="form-label">特殊需求</view>
+      <textarea class="textarea" value="{{form.specialNeeds}}" data-key="specialNeeds" bindinput="onInput" placeholder="选填" />
+    </view>
+    <button class="btn-primary submit" bindtap="submit">确认报名参加</button>
+  </view>
+
+  <view class="done" wx:if="{{!canRegister && ended}}">活动已结束</view>
+  <view
+    class="done"
+    wx:elif="{{!canRegister && deadlinePassed && !(myRegistration && myRegistration.status !== 'cancelled')}}"
+  >报名已截止</view>
+</view>

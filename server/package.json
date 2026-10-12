@@ -1,0 +1,30 @@
+{
+  "name": "frontier-society-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "seed": "node prisma/seed.js",
+    "setup": "prisma db push && node prisma/seed.js",
+    "smoke": "node scripts/smoke.mjs",
+    "job:ai": "node -e \"import('dotenv/config'); import('./src/jobs/aiFeed.js').then(m=>m.runAiFeed().then(r=>console.log(r.summary)))\"",
+    "job:maint": "node -e \"import('dotenv/config'); import('./src/jobs/maintenance.js').then(m=>m.runMaintenance().then(r=>console.log(r.summary)))\""
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^2.4.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "prisma": "5.22.0"
+  }
+}

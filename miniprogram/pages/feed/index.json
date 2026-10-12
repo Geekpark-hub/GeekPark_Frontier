@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "前沿社",
+  "navigationBarBackgroundColor": "#F7F5F1",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#F7F5F1",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 120,
+  "usingComponents": {
+    "member-gate": "/components/member-gate/index"
+  }
+}

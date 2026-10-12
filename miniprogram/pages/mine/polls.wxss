@@ -1,0 +1,75 @@
+.sub-page {
+  padding-bottom: 48rpx;
+}
+
+.card {
+  background: #fff;
+  border: 1rpx solid rgba(20, 32, 43, 0.08);
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 16rpx;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 30rpx;
+  line-height: 1.4;
+  color: #14202b;
+}
+
+.meta {
+  margin-top: 12rpx;
+  color: #6d7883;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.meta.soft {
+  color: #9a9286;
+  font-size: 22rpx;
+}
+
+.state {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.state-text {
+  color: #8a8378;
+  font-size: 26rpx;
+}
+
+.state-action {
+  margin-top: 28rpx;
+  font-size: 26rpx;
+  color: #14202b;
+  letter-spacing: 2rpx;
+  padding: 12rpx 28rpx;
+  border: 1rpx solid rgba(20, 32, 43, 0.16);
+  border-radius: 999rpx;
+}
+
+.empty-block {
+  padding: 120rpx 32rpx;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  color: #14202b;
+  letter-spacing: 1rpx;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #9a9286;
+  line-height: 1.6;
+}
+
+.press {
+  opacity: 0.65;
+}

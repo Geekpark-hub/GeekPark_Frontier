@@ -1,0 +1,51 @@
+<view class="container state" wx:if="{{loading}}">
+  <view class="state-text">加载中…</view>
+</view>
+
+<view class="container state" wx:elif="{{error}}">
+  <view class="state-text">{{error}}</view>
+  <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+</view>
+
+<view class="container" wx:elif="{{poll}}">
+  <view class="title">{{poll.title}}</view>
+  <view class="desc" wx:if="{{poll.description}}">{{poll.description}}</view>
+  <view class="meta">截止：{{endLabel}} · {{poll.multiSelect ? '多选' : '单选'}}</view>
+
+  <view class="options">
+    <view
+      wx:for="{{poll.options}}"
+      wx:key="id"
+      class="option {{selectedMap[item.id] ? 'on' : ''}} {{poll.hasVoted ? 'disabled' : ''}}"
+      data-id="{{item.id}}"
+      bindtap="toggleOption"
+    >
+      <view class="dot"></view>
+      <text class="option-text">{{item.text}}</text>
+    </view>
+  </view>
+
+  <button wx:if="{{!poll.hasVoted && poll.status === 'published'}}" class="btn-primary submit" bindtap="submitVote">提交投票</button>
+  <view wx:elif="{{poll.hasVoted}}" class="done">您已投票，提交后不可修改</view>
+  <view wx:elif="{{poll.status === 'ended'}}" class="done">投票已结束</view>
+
+  <view wx:if="{{poll.results}}" class="results">
+    <view class="section-label">投票结果</view>
+    <view class="result-meta">已投票 {{poll.results.votedCount}} 人 · 未投票 {{poll.results.unvotedCount}} 人</view>
+    <view wx:for="{{poll.results.options}}" wx:key="id" class="result-row">
+      <view class="result-head">
+        <text>{{item.text}}</text>
+        <text>{{item.count}} 票 · {{item.ratio}}%</text>
+      </view>
+      <view class="bar"><view class="fill" style="width: {{item.ratio}}%;"></view></view>
+    </view>
+
+    <view wx:if="{{poll.showVoters && poll.voters && poll.voters.length}}" class="voters">
+      <view class="section-label">投票人</view>
+      <view wx:for="{{poll.voters}}" wx:key="memberId" class="voter-row">
+        <text class="voter-name">{{item.name}}</text>
+        <text class="voter-meta">{{item.company || '会员'}} · {{item.optionText}}</text>
+      </view>
+    </view>
+  </view>
+</view>

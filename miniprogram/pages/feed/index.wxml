@@ -1,0 +1,70 @@
+<member-gate
+  visible="{{showGate}}"
+  mode="{{gateMode}}"
+  message="{{visitorMessage}}"
+  phone="{{checkedPhone}}"
+  bind:activated="onActivated"
+  bind:notmember="onNotMember"
+/>
+
+<view class="feed-page" wx:if="{{!showGate && ready}}">
+  <view class="hero reveal">
+    <image class="hero-img" src="/assets/brand/feed-hero.png" mode="aspectFill" />
+  </view>
+
+  <view class="feed-body">
+    <block wx:for="{{feedItems}}" wx:key="key">
+      <view
+        wx:if="{{item.type === 'date'}}"
+        class="date-label reveal"
+        style="animation-delay: {{item.delay}}ms"
+      >{{item.label}}</view>
+
+      <view
+        wx:elif="{{item.type === 'poll'}}"
+        class="poll-card reveal {{item.leaving ? 'is-leaving' : ''}}"
+        style="animation-delay: {{item.delay}}ms"
+        data-id="{{item.poll.id}}"
+        bindtap="goPoll"
+        hover-class="press"
+      >
+        <view class="poll-top">
+          <text class="poll-tag">投票</text>
+          <text class="poll-deadline">截止 {{item.poll.endLabel}}</text>
+        </view>
+        <view class="poll-title">{{item.poll.title}}</view>
+        <view class="poll-cta">参与投票</view>
+      </view>
+
+      <view
+        wx:elif="{{item.type === 'post'}}"
+        class="post-item reveal"
+        style="animation-delay: {{item.delay}}ms"
+      >
+        <view class="post-title">{{item.post.title}}</view>
+        <view class="post-content {{item.expanded ? 'is-open' : 'is-clamp'}}">{{item.post.content}}</view>
+        <view class="post-actions">
+          <view
+            wx:if="{{item.post.needExpand}}"
+            class="post-more"
+            data-key="{{item.key}}"
+            catchtap="toggleExpand"
+            hover-class="press-text"
+          >{{item.expanded ? '收起' : '查看更多'}}</view>
+          <view
+            wx:if="{{item.post.sourceUrl}}"
+            class="post-more"
+            data-url="{{item.post.sourceUrl}}"
+            catchtap="openSource"
+            hover-class="press-text"
+          >查看原文</view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{!feedItems.length && ready}}" class="empty">
+      <view class="empty-text">暂无动态</view>
+    </view>
+    <view wx:elif="{{footerText}}" class="feed-end">{{footerText}}</view>
+  </view>
+</view>

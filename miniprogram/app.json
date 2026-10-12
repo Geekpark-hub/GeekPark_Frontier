@@ -1,0 +1,49 @@
+{
+  "pages": [
+    "pages/feed/index",
+    "pages/events/index",
+    "pages/events/detail",
+    "pages/mine/index",
+    "pages/mine/polls",
+    "pages/mine/events",
+    "pages/mine/requests",
+    "pages/mine/request-create",
+    "pages/poll/detail"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F7F5F1",
+    "navigationBarTitleText": "前沿社",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F7F5F1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#9A9286",
+    "selectedColor": "#14202B",
+    "backgroundColor": "#F7F5F1",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/feed/index",
+        "text": "动态",
+        "iconPath": "assets/tab-feed.png",
+        "selectedIconPath": "assets/tab-feed-active.png"
+      },
+      {
+        "pagePath": "pages/events/index",
+        "text": "活动",
+        "iconPath": "assets/tab-event.png",
+        "selectedIconPath": "assets/tab-event-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "assets/tab-mine.png",
+        "selectedIconPath": "assets/tab-mine-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

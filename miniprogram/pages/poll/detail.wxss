@@ -1,0 +1,158 @@
+.title {
+  font-size: 40rpx;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.desc {
+  margin-top: 16rpx;
+  color: #243447;
+  line-height: 1.7;
+}
+
+.meta {
+  margin-top: 12rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+}
+
+.options {
+  margin-top: 36rpx;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 16rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+}
+
+.option.on {
+  border-color: var(--ink);
+  background: #eef2f5;
+}
+
+.option.disabled {
+  opacity: 0.9;
+}
+
+.dot {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  border: 2rpx solid #9aa39a;
+  flex-shrink: 0;
+}
+
+.option.on .dot {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.option-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.submit {
+  margin-top: 24rpx;
+}
+
+.done {
+  margin-top: 28rpx;
+  color: var(--muted);
+  font-size: 26rpx;
+}
+
+.results {
+  margin-top: 48rpx;
+}
+
+.result-meta {
+  color: var(--muted);
+  font-size: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.result-row {
+  margin-bottom: 20rpx;
+}
+
+.result-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+  font-size: 26rpx;
+  gap: 16rpx;
+}
+
+.bar {
+  height: 12rpx;
+  background: #e5e1d8;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.voters {
+  margin-top: 36rpx;
+  padding-top: 8rpx;
+}
+
+.voter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+
+.voter-row:last-child {
+  border-bottom: none;
+}
+
+.voter-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.voter-meta {
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+.state {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.state-text {
+  color: var(--muted);
+  font-size: 26rpx;
+}
+
+.state-action {
+  margin-top: 28rpx;
+  font-size: 26rpx;
+  color: var(--ink);
+  letter-spacing: 2rpx;
+  padding: 12rpx 28rpx;
+  border: 1rpx solid rgba(20, 32, 43, 0.16);
+  border-radius: 999rpx;
+}
+
+.press {
+  opacity: 0.65;
+}
