@@ -18,3 +18,10 @@ server/uploads/*
 .vscode/
 miniprogram/project.private.config.json
 .cursor/
+
+# deploy artifacts / local packs
+deploy/*.tgz
+deploy/tmp-*/
+deploy/*.err
+server/admin-dist/
+server/data/

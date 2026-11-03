@@ -8,13 +8,17 @@
 </view>
 
 <view class="container detail" wx:elif="{{event}}">
-  <view class="cover-wrap">
-    <image class="cover" src="{{coverUrl}}" mode="aspectFill" />
+  <view class="cover-wrap" wx:if="{{coverUrl}}">
+    <image class="cover" src="{{coverUrl}}" mode="widthFix" />
   </view>
 
   <view class="title">{{event.title}}</view>
   <view class="meta-line">{{timeLabel}}</view>
-  <view class="meta-line">{{event.location || '地点待定'}}</view>
+  <view
+    class="meta-line {{event.location ? 'is-link' : ''}}"
+    bindtap="openLocation"
+    hover-class="{{event.location ? 'press' : ''}}"
+  >{{event.location || '地点待定'}}</view>
   <view class="meta-line accent" wx:if="{{deadlineLabel}}">报名截止 {{deadlineLabel}}</view>
 
   <view class="block">
@@ -44,7 +48,23 @@
 
   <view class="block" wx:if="{{myRegistration && myRegistration.status !== 'cancelled'}}">
     <view class="label">我的报名</view>
-    <view class="status-chip">{{statusText[myRegistration.status] || myRegistration.status}}</view>
+    <view class="reg-card">
+      <view class="reg-card-main">
+        <view class="reg-status">{{regStatusText}}</view>
+        <view class="reg-meta" wx:if="{{myRegistration.name || myRegistration.companions}}">
+          <text wx:if="{{myRegistration.name}}">{{myRegistration.name}}</text>
+          <text wx:if="{{myRegistration.name && myRegistration.companions}}"> · </text>
+          <text wx:if="{{myRegistration.companions}}">随行 {{myRegistration.companions}}</text>
+        </view>
+      </view>
+      <view
+        class="reg-cancel"
+        wx:if="{{canCancel}}"
+        bindtap="cancelRegister"
+        hover-class="press"
+      >{{cancelling ? '取消中…' : '取消报名'}}</view>
+      <view class="reg-hint" wx:elif="{{ended}}">活动已结束，无法取消</view>
+    </view>
   </view>
 
   <view class="block" wx:if="{{canRegister}}">
@@ -64,7 +84,11 @@
     <button class="btn-primary submit" bindtap="submit">确认报名参加</button>
   </view>
 
-  <view class="done" wx:if="{{!canRegister && ended}}">活动已结束</view>
+  <view class="action-lock" wx:if="{{pendingNeedMember}}">
+    <view class="action-lock-title">{{isExpired ? '会员已过期' : '待运营绑定会员'}}</view>
+    <view class="action-lock-desc">{{isExpired ? '续期后即可报名本活动' : '绑定完成后即可报名本活动'}}</view>
+  </view>
+  <view class="done" wx:elif="{{!canRegister && ended}}">活动已结束</view>
   <view
     class="done"
     wx:elif="{{!canRegister && deadlinePassed && !(myRegistration && myRegistration.status !== 'cancelled')}}"

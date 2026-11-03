@@ -7,9 +7,14 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-around;
-  padding: 14rpx 24rpx calc(12rpx + env(safe-area-inset-bottom));
+  min-height: 112rpx;
+  padding: 14rpx 8rpx calc(14rpx + env(safe-area-inset-bottom));
   background: #f7f5f1;
   box-sizing: border-box;
+}
+
+.tabbar.is-hidden {
+  display: none;
 }
 
 .item {
@@ -18,30 +23,42 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6rpx 0 4rpx;
-  transition: opacity 0.18s ease;
+  padding: 4rpx 0;
 }
 
 .item:active {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
-.icon {
-  width: 48rpx;
-  height: 48rpx;
-  margin-bottom: 8rpx;
+.icon-box {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 6rpx;
+}
+
+.icon-img {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.icon-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  display: block;
 }
 
 .label {
-  font-size: 20rpx;
-  line-height: 1.2;
+  font-size: 22rpx;
+  line-height: 1.25;
   letter-spacing: 1rpx;
   color: #a8a096;
   font-weight: 400;
-  transition: color 0.18s ease;
 }
 
 .item.on .label {
   color: #14202b;
-  font-weight: 500;
+  font-weight: 560;
 }

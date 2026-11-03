@@ -1,50 +1,62 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Login from './views/Login.vue';
-import Layout from './views/Layout.vue';
-import Members from './views/Members.vue';
-import Users from './views/Users.vue';
-import Feed from './views/Feed.vue';
-import Polls from './views/Polls.vue';
-import Events from './views/Events.vue';
-import Requests from './views/Requests.vue';
-import Analytics from './views/Analytics.vue';
-import AiJobs from './views/AiJobs.vue';
-import ErrorPage from './views/ErrorPage.vue';
 import { ensureAdminSession } from './api';
 import { ADMIN_MENUS, canAccessMenu, firstAllowedPath } from './menus';
 
 const pathToMenu = Object.fromEntries(ADMIN_MENUS.map((m) => [m.path, m.key]));
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 页面由 frontier-api 同源托管；静态资源可走 CDN（vite base）
+  history: createWebHistory('/'),
   routes: [
-    { path: '/login', component: Login },
-    { path: '/404', component: ErrorPage, meta: { errorCode: '404', public: true } },
-    { path: '/500', component: ErrorPage, meta: { errorCode: '500', public: true } },
+    { path: '/login', name: 'login', component: () => import('./views/Login.vue') },
+    {
+      path: '/404',
+      name: 'error-404',
+      component: () => import('./views/ErrorPage.vue'),
+      meta: { errorCode: '404', public: true },
+    },
+    {
+      path: '/500',
+      name: 'error-500',
+      component: () => import('./views/ErrorPage.vue'),
+      meta: { errorCode: '500', public: true },
+    },
     {
       path: '/',
-      component: Layout,
+      name: 'layout',
+      component: () => import('./views/Layout.vue'),
       redirect: () => {
         try {
           const member = JSON.parse(localStorage.getItem('admin_member') || 'null');
+          if (!member) return '/login';
           return firstAllowedPath(member);
         } catch {
-          return '/members';
+          return '/login';
         }
       },
       children: [
-        { path: 'members', component: Members, meta: { menu: 'members' } },
-        { path: 'users', component: Users, meta: { menu: 'users' } },
+        { path: 'members', name: 'members', component: () => import('./views/Members.vue'), meta: { menu: 'members' } },
+        { path: 'wx-entries', name: 'wx-entries', component: () => import('./views/WxEntries.vue'), meta: { menu: 'wx-entries' } },
+        { path: 'users', name: 'users', component: () => import('./views/Users.vue'), meta: { menu: 'users' } },
         { path: 'admins', redirect: '/users' },
-        { path: 'feed', component: Feed, meta: { menu: 'feed' } },
-        { path: 'polls', component: Polls, meta: { menu: 'polls' } },
-        { path: 'events', component: Events, meta: { menu: 'events' } },
-        { path: 'requests', component: Requests, meta: { menu: 'requests' } },
-        { path: 'analytics', component: Analytics, meta: { menu: 'analytics' } },
-        { path: 'ai', component: AiJobs, meta: { menu: 'ai' } },
+        { path: 'feed', name: 'feed', component: () => import('./views/Feed.vue'), meta: { menu: 'feed' } },
+        { path: 'briefs', name: 'briefs', component: () => import('./views/Briefs.vue'), meta: { menu: 'briefs' } },
+        { path: 'polls', name: 'polls', component: () => import('./views/Polls.vue'), meta: { menu: 'polls' } },
+        { path: 'events', name: 'events', component: () => import('./views/Events.vue'), meta: { menu: 'events' } },
+        { path: 'requests', name: 'requests', component: () => import('./views/Requests.vue'), meta: { menu: 'requests' } },
+        { path: 'analytics', name: 'analytics', component: () => import('./views/Analytics.vue'), meta: { menu: 'analytics' } },
+        { path: 'notify', name: 'notify', component: () => import('./views/NotifyLogs.vue'), meta: { menu: 'notify' } },
+        { path: 'audit', name: 'audit', component: () => import('./views/AuditLogs.vue'), meta: { menu: 'audit' } },
+        { path: 'ai', name: 'ai', component: () => import('./views/AiJobs.vue'), meta: { menu: 'ai' } },
+        { path: 'sources', name: 'sources', component: () => import('./views/Sources.vue'), meta: { menu: 'sources' } },
       ],
     },
-    { path: '/:pathMatch(.*)*', name: 'not-found', component: ErrorPage, meta: { errorCode: '404', public: true } },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('./views/ErrorPage.vue'),
+      meta: { errorCode: '404', public: true },
+    },
   ],
 });
 

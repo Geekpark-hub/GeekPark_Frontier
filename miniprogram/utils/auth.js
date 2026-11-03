@@ -26,65 +26,125 @@ function isActiveMember(member) {
   return member.status === 'active' || Boolean(member.isAdmin);
 }
 
-/** 本地是否有可用的活跃会员会话（用于首屏避免闪门禁） */
+/** 本地可浏览会话：正式会员 / 过期会员 / 待绑访客 */
 function hasActiveCachedAccess() {
   try {
     const token = wx.getStorageSync('token');
+    if (!token) return false;
     const member = wx.getStorageSync('member');
-    return Boolean(token && isActiveMember(member));
+    if (member && isActiveMember(member)) return true;
+    const gateMode = wx.getStorageSync('gateMode');
+    if (gateMode === 'pending') return true;
+    // 过期：有 token + member 即可浏览
+    if (gateMode === 'inactive' && member) return true;
+    return false;
   } catch (e) {
     return false;
   }
 }
 
-/** 按全局会话同步底栏（自定义 tabBar + 原生接口双保险） */
+const ALL_TABS = [
+  {
+    key: 'feed',
+    pagePath: '/pages/feed/index',
+    text: '动态',
+    iconOff: '/assets/tab-feed.png',
+    iconOn: '/assets/tab-feed-active.png',
+  },
+  {
+    key: 'event',
+    pagePath: '/pages/events/index',
+    text: '活动',
+    iconOff: '/assets/tab-event.png',
+    iconOn: '/assets/tab-event-active.png',
+  },
+  {
+    key: 'mine',
+    pagePath: '/pages/mine/index',
+    text: '我的',
+    iconOff: '/assets/tab-mine.png',
+    iconOn: '/assets/tab-mine-active.png',
+  },
+];
+
+/**
+ * 按全局会话同步自定义底栏。
+ * pending（待绑）：隐藏「我的」；过期会员仍显示「我的」
+ */
 function syncTabBar(selectedIndex) {
   try {
     const state = getAccessState();
-    const show = state.kind === 'member';
+    const show = state.kind === 'member' || state.kind === 'pending' || state.kind === 'inactive';
+    const showMine = state.kind === 'member' || state.kind === 'inactive';
     const pages = getCurrentPages();
     const page = pages[pages.length - 1];
     if (page && typeof page.getTabBar === 'function') {
       const bar = page.getTabBar();
       if (bar) {
         if (typeof bar.setVisible === 'function') bar.setVisible(show);
+        if (typeof bar.setTabs === 'function') {
+          bar.setTabs(showMine ? ALL_TABS : ALL_TABS.filter((t) => t.key !== 'mine'));
+        }
         if (typeof selectedIndex === 'number' && typeof bar.setSelected === 'function') {
-          bar.setSelected(selectedIndex);
+          // pending 只有 2 个 tab，索引需裁剪
+          const maxIdx = showMine ? 2 : 1;
+          bar.setSelected(Math.min(selectedIndex, maxIdx));
         }
       }
     }
-    const api = show ? wx.showTabBar : wx.hideTabBar;
-    api({ animation: false, fail() {} });
   } catch (e) {
-    // 非 tab 页调用会失败，忽略
+    // ignore
   }
 }
 
 function inactiveMessage(member, fallback) {
   if (fallback) return fallback;
   if (member && member.status === 'expired') {
-    return '会员已过期，请联系运营团队续期后再使用完整功能。';
+    return '会员已过期，可继续浏览动态与活动；续期后可报名、投票。';
   }
-  return '会员状态待更新，请联系运营团队确认后再试。';
+  return '会员状态待更新，请联系前沿社运营确认后再试。';
 }
 
-/**
- * 启动会话：
- * 1) 若已绑定过微信的会员 → 直接进
- * 2) 否则进入 needPhone，先拉起手机号授权再判断
- */
+/** 可浏览但不可写：待绑访客 / 过期会员 */
+function isBrowseOnlyState(state) {
+  if (!state) return false;
+  return state.kind === 'pending' || state.kind === 'inactive';
+}
+
+function rememberWxEntry(entry) {
+  const app = getApp();
+  if (!app) return;
+  if (!entry) {
+    app.globalData.wxEntry = null;
+    return;
+  }
+  app.globalData.wxEntry = {
+    id: entry.id || '',
+    wxNickname: entry.wxNickname || '',
+    phone: entry.phone || '',
+    nickAsked: Boolean(entry.nickAsked),
+    status: entry.status || 'pending',
+  };
+}
+
 async function bootstrapSession() {
   const app = getApp();
 
+  // 正式会员 / 过期会员会话
   if (app.globalData.token && app.globalData.member) {
     try {
       const res = await request({ url: '/auth/me' });
       if (!isActiveMember(res.member)) {
-        app.setInactiveSession(res.member, inactiveMessage(res.member));
+        app.setInactiveSession(
+          res.member,
+          inactiveMessage(res.member),
+          app.globalData.token
+        );
         syncTabBar();
         return { status: 'inactive', member: res.member };
       }
       app.setMemberSession(app.globalData.token, res.member);
+      rememberWxEntry(null);
       syncTabBar();
       return { status: 'member', member: res.member };
     } catch (e) {
@@ -92,14 +152,13 @@ async function bootstrapSession() {
       const msg = (e && e.message) || '';
       if (cached && (cached.status === 'expired' || /过期/.test(msg))) {
         const member = { ...cached, status: 'expired' };
-        app.setInactiveSession(member, inactiveMessage(member, msg));
+        app.setInactiveSession(
+          member,
+          inactiveMessage(member, msg),
+          app.globalData.token
+        );
         syncTabBar();
         return { status: 'inactive', member };
-      }
-      if (cached && cached.status === 'pending') {
-        app.setInactiveSession(cached, inactiveMessage(cached, msg));
-        syncTabBar();
-        return { status: 'inactive', member: cached };
       }
       app.clearSession();
     }
@@ -115,34 +174,107 @@ async function bootstrapSession() {
     });
     if (res.status === 'member') {
       if (!isActiveMember(res.member)) {
-        app.setInactiveSession(res.member, inactiveMessage(res.member));
+        app.setInactiveSession(
+          res.member,
+          inactiveMessage(res.member),
+          res.token
+        );
         syncTabBar();
         return { status: 'inactive', member: res.member };
       }
       app.setMemberSession(res.token, res.member);
+      rememberWxEntry(null);
       syncTabBar();
       return { status: 'member', member: res.member };
     }
-    // 未绑定会员：先授权手机号；保留欢迎文案供后续展示
-    app.setNeedPhoneSession(res.openid || '', res.message || '');
+    if (res.status === 'pending') {
+      app.setPendingSession(res.token, res.openid || '', res.wxEntry, res.message || '');
+      syncTabBar();
+      return { status: 'pending', openid: res.openid, wxEntry: res.wxEntry };
+    }
+    rememberWxEntry(res.wxEntry || null);
+    app.setNeedInviteSession(
+      res.openid || '',
+      res.message || '请选用微信昵称后进入。'
+    );
     syncTabBar();
-    return { status: 'needPhone', openid: res.openid, message: res.message };
+    return {
+      status: 'needInvite',
+      openid: res.openid,
+      message: res.message,
+      wxEntry: res.wxEntry,
+    };
   } catch (e) {
-    // 微信接口失败：进入手机号授权，不写死伪造 openid 文案干扰排查
     const openid = app.globalData.openid || '';
-    app.setNeedPhoneSession(openid, '请先授权微信手机号');
+    app.setNeedInviteSession(openid, '请选用微信昵称后进入');
     syncTabBar();
-    return { status: 'needPhone', openid, error: e.message };
+    return { status: 'needInvite', openid, error: e.message };
   }
 }
 
-async function bindPhoneByWx(phoneCode) {
+/**
+ * 同步会话：运营后台绑定后，待绑定访客切 tab / 回前台时可升级为正式会员，无需杀掉小程序重进。
+ * @returns {{ status: string, promoted?: boolean, member?: object } | null}
+ */
+async function syncSession(opts = {}) {
+  const app = getApp();
+  if (!app || !app.globalData.token) return null;
+  const quiet = opts.quiet !== false;
+  try {
+    const res = await request({
+      url: '/auth/sync',
+      auth: true,
+      loading: false,
+    });
+    if (res.status === 'member' && res.token && res.member) {
+      const wasPending = app.globalData.gateMode === 'pending' || !app.globalData.member;
+      app.setMemberSession(res.token, res.member);
+      rememberWxEntry(null);
+      syncTabBar();
+      if (wasPending && res.promoted && !quiet) {
+        wx.showToast({ title: '会员已开通', icon: 'success' });
+      }
+      return { status: 'member', promoted: Boolean(res.promoted), member: res.member };
+    }
+    if (res.status === 'pending') {
+      app.setPendingSession(
+        app.globalData.token,
+        res.openid || app.globalData.openid || '',
+        res.wxEntry,
+        res.message || ''
+      );
+      syncTabBar();
+      return { status: 'pending', wxEntry: res.wxEntry };
+    }
+    if ((res.status === 'expired' || res.status === 'inactive') && res.member) {
+      app.setInactiveSession(
+        res.member,
+        inactiveMessage(res.member, res.message),
+        res.token || app.globalData.token
+      );
+      syncTabBar();
+      return { status: 'inactive', member: res.member };
+    }
+  } catch (e) {
+    // 401 由 request 清会话；网络错误忽略，沿用本地态
+  }
+  return null;
+}
+
+/** 授权微信昵称后进入（待绑访客）；phoneCode 可选，拒绝授权时不传 */
+async function bindWxNick(nickname, phoneCode) {
   const loginCode = await wxLoginCode();
+  const data = {
+    loginCode,
+    nickname: String(nickname || '').trim(),
+  };
+  if (phoneCode) data.phoneCode = String(phoneCode);
   const res = await request({
-    url: '/auth/bind-phone',
+    url: '/auth/bind-wx-nick',
     method: 'POST',
-    data: { loginCode, phoneCode },
+    data,
     auth: false,
+    loading: true,
   });
   applyBindResult(res);
   return res;
@@ -152,14 +284,25 @@ function applyBindResult(res) {
   const app = getApp();
   if (res.status === 'member') {
     if (!isActiveMember(res.member)) {
-      app.setInactiveSession(res.member, inactiveMessage(res.member));
+      app.setInactiveSession(
+        res.member,
+        inactiveMessage(res.member),
+        res.token
+      );
       syncTabBar();
       return;
     }
     app.setMemberSession(res.token, res.member);
+    rememberWxEntry(null);
     syncTabBar();
     return;
   }
+  if (res.status === 'pending') {
+    app.setPendingSession(res.token, res.openid || '', res.wxEntry, res.message || '');
+    syncTabBar();
+    return;
+  }
+  rememberWxEntry(res.wxEntry || null);
   app.setNotMemberSession(
     res.openid || app.globalData.openid,
     res.phone || '',
@@ -193,6 +336,15 @@ function getAccessState() {
     return { kind: 'member', member };
   }
 
+  if (app.globalData.gateMode === 'pending' && app.globalData.token) {
+    return {
+      kind: 'pending',
+      openid: app.globalData.openid,
+      wxEntry: app.globalData.wxEntry,
+      message: app.globalData.visitorMessage || '',
+    };
+  }
+
   if (app.globalData.gateMode === 'notMember') {
     return {
       kind: 'notMember',
@@ -202,18 +354,25 @@ function getAccessState() {
     };
   }
 
+  if (app.globalData.gateMode === 'needPhone') {
+    app.globalData.gateMode = 'needInvite';
+  }
+
   return {
-    kind: 'needPhone',
+    kind: 'needInvite',
     openid: app.globalData.openid,
-    message: app.globalData.visitorMessage || '请先授权微信手机号',
+    message: app.globalData.visitorMessage || '请选用微信昵称后进入。',
   };
 }
 
-/** Tab 页门禁 mode：needPhone | notMember | inactive */
 function gateModeFromState(state) {
-  if (!state || state.kind === 'member') return 'member';
-  if (state.kind === 'needPhone') return 'needPhone';
-  if (state.kind === 'inactive') return 'inactive';
+  // 过期与待绑一样：不挡整页门禁，只在写操作处提示
+  if (!state || state.kind === 'member' || state.kind === 'pending' || state.kind === 'inactive') {
+    return 'member';
+  }
+  if (state.kind === 'needInvite' || state.kind === 'needPhone' || state.kind === 'phoneAuth') {
+    return 'needInvite';
+  }
   return 'notMember';
 }
 
@@ -224,11 +383,13 @@ async function requireMemberOrBackHome() {
   if (state.kind === 'member') return true;
 
   const title =
-    state.kind === 'inactive'
-      ? '会员状态不可用'
-      : state.kind === 'notMember'
-        ? '该手机号未匹配到会员信息'
-        : '请先完成手机号验证';
+    state.kind === 'pending'
+      ? '开通会员后可使用'
+      : state.kind === 'inactive'
+        ? '会员状态不可用'
+        : state.kind === 'notMember'
+          ? '请联系前沿社运营开通'
+          : '请先选用微信昵称';
   wx.showToast({ title, icon: 'none' });
   wx.switchTab({
     url: '/pages/feed/index',
@@ -239,13 +400,87 @@ async function requireMemberOrBackHome() {
   return false;
 }
 
+/** 内参等：正式会员或过期会员可进；待绑不可 */
+async function requireBoundMemberOrBackHome() {
+  const app = getApp();
+  if (app.globalData.sessionReady) await app.globalData.sessionReady;
+  const state = getAccessState();
+  if (state.kind === 'member') return true;
+  if (state.kind === 'inactive' && state.member) return true;
+
+  const title =
+    state.kind === 'pending'
+      ? '开通会员后可阅读内参'
+      : state.kind === 'notMember'
+        ? '请联系前沿社运营开通'
+        : '请先选用微信昵称';
+  wx.showToast({ title, icon: 'none' });
+  wx.switchTab({
+    url: '/pages/feed/index',
+    complete() {
+      syncTabBar(0);
+    },
+  });
+  return false;
+}
+
+/** 浏览活动/投票详情：正式会员、过期会员、待绑定访客均可进入 */
+async function requireBrowseAccessOrBackHome() {
+  const app = getApp();
+  if (app.globalData.sessionReady) await app.globalData.sessionReady;
+  const state = getAccessState();
+  if (state.kind === 'member' || isBrowseOnlyState(state)) return true;
+
+  const title =
+    state.kind === 'notMember' ? '请联系前沿社运营开通' : '请先选用微信昵称';
+  wx.showToast({ title, icon: 'none' });
+  wx.switchTab({
+    url: '/pages/feed/index',
+    complete() {
+      syncTabBar(0);
+    },
+  });
+  return false;
+}
+
+/** 投票 / 报名等写操作：待绑 / 过期可浏览，但不能提交 */
+async function ensureMemberForAction(action = '使用此功能') {
+  const app = getApp();
+  if (app.globalData.sessionReady) await app.globalData.sessionReady;
+  const state = getAccessState();
+  if (state.kind === 'member') return true;
+  const expired = state.kind === 'inactive' && state.member && state.member.status === 'expired';
+  const content = expired
+    ? `会员已过期，续期后即可${action}。当前可先浏览动态与活动。`
+    : state.kind === 'pending'
+      ? `运营确认会员身份后即可${action}。当前可先浏览动态与活动。`
+      : state.kind === 'inactive'
+        ? '会员状态待更新，请联系前沿社运营。'
+        : '请先完成进入认证，并由运营绑定会员后再试。';
+  await new Promise((resolve) => {
+    wx.showModal({
+      title: expired ? '会员已过期' : '需要会员身份',
+      content,
+      showCancel: false,
+      confirmText: '知道了',
+      complete: () => resolve(),
+    });
+  });
+  return false;
+}
+
 module.exports = {
   wxLoginCode,
   bootstrapSession,
-  bindPhoneByWx,
+  syncSession,
+  bindWxNick,
   getAccessState,
   gateModeFromState,
+  isBrowseOnlyState,
   requireMemberOrBackHome,
+  requireBoundMemberOrBackHome,
+  requireBrowseAccessOrBackHome,
+  ensureMemberForAction,
   maskPhone,
   syncTabBar,
   hasActiveCachedAccess,

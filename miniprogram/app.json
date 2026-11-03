@@ -3,12 +3,17 @@
     "pages/feed/index",
     "pages/events/index",
     "pages/events/detail",
+    "pages/events/share",
     "pages/mine/index",
     "pages/mine/polls",
     "pages/mine/events",
     "pages/mine/requests",
     "pages/mine/request-create",
-    "pages/poll/detail"
+    "pages/mine/request-detail",
+    "pages/poll/detail",
+    "pages/poll/share",
+    "pages/briefs/index",
+    "pages/briefs/share"
   ],
   "window": {
     "navigationBarBackgroundColor": "#F7F5F1",

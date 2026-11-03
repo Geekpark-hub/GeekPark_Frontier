@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "活动报名",
+  "navigationBarBackgroundColor": "#F7F5F1",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#F7F5F1",
+  "usingComponents": {
+    "member-gate": "/components/member-gate/index"
+  }
+}

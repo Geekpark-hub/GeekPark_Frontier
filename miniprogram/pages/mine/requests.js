@@ -43,4 +43,10 @@ Page({
   goCreate() {
     wx.navigateTo({ url: '/pages/mine/request-create' });
   },
+
+  goDetail(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/mine/request-detail?id=${id}` });
+  },
 });

@@ -1,13 +1,18 @@
 /** 后台菜单权限键（与 admin 前端 nav 一致） */
 export const ADMIN_MENUS = [
   { key: 'members', label: '会员管理' },
+  { key: 'wx-entries', label: '微信进入' },
   { key: 'users', label: '用户管理' },
   { key: 'feed', label: '动态管理' },
+  { key: 'briefs', label: '内参管理' },
   { key: 'polls', label: '投票管理' },
   { key: 'events', label: '活动管理' },
   { key: 'requests', label: '需求管理' },
-  { key: 'analytics', label: '活跃分析', superOnly: true },
+  { key: 'analytics', label: '活跃分析' },
+  { key: 'notify', label: '消息中心' },
+  { key: 'audit', label: '操作记录', superOnly: true },
   { key: 'ai', label: 'AI 与任务' },
+  { key: 'sources', label: '信息源' },
 ];
 
 export const ADMIN_MENU_KEYS = ADMIN_MENUS.map((m) => m.key);
@@ -35,7 +40,7 @@ export function serializeAdminMenus(menus) {
 
 /**
  * 解析账号可用菜单。
- * - 超管：全部（含活跃分析）
+ * - 超管：全部（含操作记录等超管专属）
  * - 普通管理员且未配置（空数组）：兼容旧数据，视为全部可分配菜单（不含超管专属）
  * - 已配置：按列表（仍剔除超管专属）
  */
@@ -43,8 +48,16 @@ export function resolveAdminMenus(member) {
   if (!member) return [];
   if (member.isSuperAdmin) return [...ADMIN_MENU_KEYS];
   if (!member.isAdmin && !member.isSuperAdmin) return [];
-  const menus = parseAdminMenus(member.adminMenus);
+  let menus = parseAdminMenus(member.adminMenus);
   if (!menus.length) return [...ASSIGNABLE_MENU_KEYS];
+  // 有 AI 权限时默认也能管信息源（兼容旧权限配置）
+  if (menus.includes('ai') && !menus.includes('sources')) {
+    menus = [...menus, 'sources'];
+  }
+  // 有会员管理时默认也能管微信进入（人工绑定）
+  if (menus.includes('members') && !menus.includes('wx-entries')) {
+    menus = [...menus, 'wx-entries'];
+  }
   return menus;
 }
 

@@ -1,17 +1,29 @@
-<view class="tabbar" wx:if="{{visible}}">
+<view class="tabbar {{visible ? '' : 'is-hidden'}}">
   <view
     wx:for="{{list}}"
-    wx:key="pagePath"
+    wx:key="key"
     class="item {{selected === index ? 'on' : ''}}"
     data-path="{{item.pagePath}}"
     data-index="{{index}}"
     bindtap="onSwitch"
   >
-    <image
-      class="icon"
-      src="{{selected === index ? item.selectedIconPath : item.iconPath}}"
-      mode="aspectFit"
-    />
+    <view class="icon-box" style="width: {{cssSize}}px; height: {{cssSize}}px;">
+      <!-- 描边播放时隐藏底图，避免 PNG 与 canvas 矢量对不齐产生重影 -->
+      <image
+        wx:if="{{iconSrc[item.key] && drawingKey !== item.key}}"
+        class="icon-img"
+        src="{{iconSrc[item.key]}}"
+        mode="aspectFit"
+        style="width: {{cssSize}}px; height: {{cssSize}}px;"
+      />
+      <canvas
+        wx:if="{{drawingKey === item.key}}"
+        type="2d"
+        id="tab-live-{{item.key}}"
+        class="icon-canvas"
+        style="width: {{cssSize}}px; height: {{cssSize}}px;"
+      />
+    </view>
     <text class="label">{{item.text}}</text>
   </view>
 </view>

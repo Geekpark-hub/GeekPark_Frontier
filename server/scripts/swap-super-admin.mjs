@@ -10,9 +10,9 @@ let root = await prisma.member.findUnique({ where: { phone: ROOT_SUPER_ADMIN_PHO
 if (!root) {
   root = await prisma.member.create({
     data: {
-      name: '超级管理员',
+      name: '管理员',
       company: '前沿社',
-      title: '超级管理员',
+      title: '管理员',
       phone: ROOT_SUPER_ADMIN_PHONE,
       status: 'active',
       isAdmin: true,

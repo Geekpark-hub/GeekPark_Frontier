@@ -1,0 +1,168 @@
+<member-gate
+  visible="{{showGate}}"
+  mode="{{gateMode}}"
+  message="{{visitorMessage}}"
+  phone="{{checkedPhone}}"
+  bind:activated="onActivated"
+  bind:notmember="onNotMember"
+/>
+
+<view class="reader state" wx:if="{{!showGate && loading}}">
+  <view class="state-text">加载中…</view>
+</view>
+
+<view class="reader state" wx:elif="{{!showGate && error}}">
+  <view class="state-text">{{error}}</view>
+  <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+</view>
+
+<view class="reader-wrap" wx:elif="{{!showGate && brief}}">
+  <!-- 水印必须在 scroll-view 外，小程序内 fixed 才会生效 -->
+  <view class="watermark" aria-hidden="true">
+    <view wx:for="{{wmList}}" wx:key="*this" class="wm-item">{{watermark}}</view>
+  </view>
+
+  <!-- 顶部氛围进度：极细，不抢戏 -->
+  <view class="ambient {{ambientOn ? 'on' : ''}}">
+    <view class="ambient-fill" style="width: {{progress}}%;"></view>
+  </view>
+
+  <scroll-view
+    class="reader"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    bounces
+    scroll-with-animation
+    scroll-into-view="{{scrollInto}}"
+    bindscroll="onScroll"
+  >
+    <view class="sheet {{ready ? 'is-ready' : ''}}">
+      <view id="top" class="mast" bindtap="openToc" hover-class="mast-press">
+        <view class="mast-brand">THE FRONTIER</view>
+        <view class="mast-line"></view>
+        <view class="mast-tag">{{toc.length ? '目录' : '内参 · 会员专享'}}</view>
+      </view>
+
+      <view class="hero">
+        <view class="hero-title">{{brief.title}}</view>
+        <view class="hero-meta" wx:if="{{brief.guestName || publishedLabel}}">
+          <text wx:if="{{brief.guestName}}">{{brief.guestName}}</text>
+          <text wx:if="{{brief.guestName && publishedLabel}}" class="hero-dot">·</text>
+          <text wx:if="{{publishedLabel}}">{{publishedLabel}}</text>
+        </view>
+      </view>
+
+      <view class="notice">
+        <text class="notice-text">{{brief.summary || '仅限会员内部阅读，请勿外传或转发扩散。'}}</text>
+      </view>
+
+      <view class="divider"></view>
+
+      <view class="article">
+        <block wx:for="{{blocks}}" wx:key="index">
+          <view wx:if="{{item.type === 'part'}}" class="part" id="{{item.anchorId}}">
+            <view class="part-label">{{item.label}}</view>
+            <view class="part-title">{{item.title}}</view>
+          </view>
+
+          <view wx:elif="{{item.type === 'heading'}}" class="heading">{{item.text}}</view>
+
+          <view wx:elif="{{item.type === 'quote'}}" class="quote">
+            <view class="quote-mark">“</view>
+            <view class="quote-body">
+              <text
+                wx:for="{{item.runs}}"
+                wx:for-item="run"
+                wx:key="index"
+                class="{{run.bold ? 'run-bold' : ''}}"
+              >{{run.text}}</text>
+            </view>
+          </view>
+
+          <view wx:elif="{{item.type === 'p'}}" class="para">
+            <text
+              wx:for="{{item.runs}}"
+              wx:for-item="run"
+              wx:key="index"
+              class="{{run.bold ? 'run-bold' : ''}}"
+            >{{run.text}}</text>
+          </view>
+        </block>
+      </view>
+
+      <view class="end">
+        <view class="end-mark">—</view>
+        <view class="end-text">全文完</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部控制岛：阅读进度 + 目录入口 -->
+  <view
+    class="island {{islandOn ? 'on' : ''}}"
+    bindtap="openToc"
+    hover-class="island-press"
+  >
+    <view class="island-mark">F</view>
+
+    <view class="island-main">
+      <view class="island-row">
+        <text class="island-kicker">THE FRONTIER</text>
+        <text class="island-cta">目录</text>
+      </view>
+      <view class="island-rail">
+        <view class="island-fill" style="width: {{progress}}%;"></view>
+      </view>
+      <text class="island-chapter">{{dockChapter}}</text>
+    </view>
+  </view>
+
+  <view class="dim {{tocOpen ? 'on' : ''}}" bindtap="closeToc" catchtouchmove="noop"></view>
+  <view class="contents {{tocOpen ? 'on' : ''}} {{tocReady ? 'ready' : ''}}">
+    <view class="contents-grab"></view>
+    <view class="contents-head">
+      <view class="contents-head-row">
+        <text class="contents-title">目录</text>
+        <text class="contents-meta">{{toc.length}} 章</text>
+      </view>
+      <text class="contents-now" wx:if="{{activeLabel}}">正在阅读 · {{activeLabel}}</text>
+    </view>
+    <scroll-view
+      class="contents-list"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      scroll-into-view="{{tocScrollInto}}"
+      scroll-with-animation
+    >
+      <view
+        id="toc-top"
+        class="contents-row {{activeToc === -1 ? 'on' : ''}} {{picking === -1 ? 'pick' : ''}}"
+        style="animation-delay: 40ms"
+        data-id="top"
+        data-index="-1"
+        bindtap="jumpTo"
+        hover-class="contents-row-press"
+      >
+        <view class="contents-dot"></view>
+        <text class="contents-row-title">文首</text>
+      </view>
+      <view
+        wx:for="{{toc}}"
+        wx:key="anchorId"
+        id="toc-{{index}}"
+        class="contents-row {{activeToc === index ? 'on' : ''}} {{picking === index ? 'pick' : ''}}"
+        style="animation-delay: {{80 + index * 42}}ms"
+        data-id="{{item.anchorId}}"
+        data-index="{{index}}"
+        bindtap="jumpTo"
+        hover-class="contents-row-press"
+      >
+        <text class="contents-row-index">{{item.num}}</text>
+        <text class="contents-row-title">{{item.title}}</text>
+      </view>
+      <view class="contents-pad"></view>
+    </scroll-view>
+  </view>
+</view>

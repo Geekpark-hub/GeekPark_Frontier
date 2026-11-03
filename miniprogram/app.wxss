@@ -9,7 +9,7 @@ page {
   background: var(--bg);
   color: var(--ink);
   font-family: "PingFang SC", "Helvetica Neue", sans-serif;
-  font-size: 28rpx;
+  font-size: 30rpx;
   line-height: 1.55;
   box-sizing: border-box;
 }
@@ -72,6 +72,110 @@ page {
   line-height: 1.6;
 }
 
+/* 待运营绑定：替代报名/投票按钮，需比普通 .done 更醒目 */
+.action-lock {
+  margin-top: 36rpx;
+  padding: 28rpx 32rpx;
+  border-radius: 14rpx;
+  background: #ebe6dc;
+  border: 1rpx solid rgba(20, 32, 43, 0.12);
+  text-align: center;
+}
+.action-lock-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 1rpx;
+}
+.action-lock-desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .link {
   color: var(--accent);
+}
+
+/* 骨架屏（首进 tab 比整页转圈更稳） */
+.sk {
+  background: linear-gradient(
+    90deg,
+    #ebe6dc 0%,
+    #f4f0e8 45%,
+    #ebe6dc 90%
+  );
+  background-size: 220% 100%;
+  animation: sk-shine 1.15s ease-in-out infinite;
+  border-radius: 10rpx;
+}
+
+@keyframes sk-shine {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.sk-page {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.sk-hero {
+  margin: 24rpx 28rpx 8rpx;
+  height: 280rpx;
+  border-radius: 12rpx;
+}
+
+.sk-line {
+  height: 28rpx;
+  margin-bottom: 16rpx;
+}
+
+.sk-line.sm {
+  height: 22rpx;
+  width: 46%;
+}
+
+.sk-line.md {
+  width: 72%;
+}
+
+.sk-line.lg {
+  width: 88%;
+}
+
+.sk-card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  margin-bottom: 28rpx;
+  box-shadow: 0 6rpx 24rpx rgba(20, 32, 43, 0.05);
+}
+
+.sk-cover {
+  height: 360rpx;
+  border-radius: 0;
+}
+
+.sk-card-body {
+  padding: 28rpx;
+}
+
+.sk-feed-block {
+  padding: 12rpx 40rpx 24rpx;
+}
+
+.sk-date {
+  width: 160rpx;
+  height: 24rpx;
+  margin: 20rpx 0 18rpx;
+}
+
+.sk-post {
+  padding: 8rpx 0 36rpx;
 }

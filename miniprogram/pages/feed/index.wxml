@@ -8,63 +8,124 @@
 />
 
 <view class="feed-page" wx:if="{{!showGate && ready}}">
-  <view class="hero reveal">
-    <image class="hero-img" src="/assets/brand/feed-hero.png" mode="aspectFill" />
-  </view>
-
-  <view class="feed-body">
-    <block wx:for="{{feedItems}}" wx:key="key">
-      <view
-        wx:if="{{item.type === 'date'}}"
-        class="date-label reveal"
-        style="animation-delay: {{item.delay}}ms"
-      >{{item.label}}</view>
-
-      <view
-        wx:elif="{{item.type === 'poll'}}"
-        class="poll-card reveal {{item.leaving ? 'is-leaving' : ''}}"
-        style="animation-delay: {{item.delay}}ms"
-        data-id="{{item.poll.id}}"
-        bindtap="goPoll"
-        hover-class="press"
-      >
-        <view class="poll-top">
-          <text class="poll-tag">投票</text>
-          <text class="poll-deadline">截止 {{item.poll.endLabel}}</text>
-        </view>
-        <view class="poll-title">{{item.poll.title}}</view>
-        <view class="poll-cta">参与投票</view>
+  <!-- 首次进入：骨架屏，替代整页 loading -->
+  <block wx:if="{{pageLoading}}">
+    <view class="sk sk-hero"></view>
+    <view class="sk-feed-block">
+      <view class="sk sk-date"></view>
+      <view class="sk-post" wx:for="{{[1,2,3]}}" wx:key="*this">
+        <view class="sk sk-line lg"></view>
+        <view class="sk sk-line md"></view>
+        <view class="sk sk-line sm"></view>
       </view>
-
-      <view
-        wx:elif="{{item.type === 'post'}}"
-        class="post-item reveal"
-        style="animation-delay: {{item.delay}}ms"
-      >
-        <view class="post-title">{{item.post.title}}</view>
-        <view class="post-content {{item.expanded ? 'is-open' : 'is-clamp'}}">{{item.post.content}}</view>
-        <view class="post-actions">
-          <view
-            wx:if="{{item.post.needExpand}}"
-            class="post-more"
-            data-key="{{item.key}}"
-            catchtap="toggleExpand"
-            hover-class="press-text"
-          >{{item.expanded ? '收起' : '查看更多'}}</view>
-          <view
-            wx:if="{{item.post.sourceUrl}}"
-            class="post-more"
-            data-url="{{item.post.sourceUrl}}"
-            catchtap="openSource"
-            hover-class="press-text"
-          >查看原文</view>
-        </view>
-      </view>
-    </block>
-
-    <view wx:if="{{!feedItems.length && ready}}" class="empty">
-      <view class="empty-text">暂无动态</view>
     </view>
-    <view wx:elif="{{footerText}}" class="feed-end">{{footerText}}</view>
+  </block>
+
+  <block wx:else>
+    <view class="hero reveal" wx:if="{{heroReady && heroEnabled && heroUrl}}">
+      <image class="hero-img" src="{{heroUrl}}" mode="widthFix" />
+    </view>
+
+    <view class="feed-body">
+      <block wx:for="{{feedItems}}" wx:key="key">
+        <view
+          wx:if="{{item.type === 'date'}}"
+          class="date-label reveal"
+          style="animation-delay: {{item.delay}}ms"
+        >{{item.label}}</view>
+
+        <view
+          wx:elif="{{item.type === 'poll'}}"
+          class="poll-card reveal {{item.leaving ? 'is-leaving' : ''}} {{item.poll.hasVoted ? 'is-voted' : ''}}"
+          style="animation-delay: {{item.delay}}ms"
+          data-id="{{item.poll.id}}"
+          bindtap="goPoll"
+          hover-class="press"
+        >
+          <view class="poll-top">
+            <text class="poll-tag">{{item.poll.hasVoted ? '投票 · 已参与' : '投票'}}</text>
+            <text class="poll-deadline">截止 {{item.poll.endLabel}}</text>
+          </view>
+          <view class="poll-title">{{item.poll.title}}</view>
+          <view class="poll-cta">{{item.poll.hasVoted ? '已投票 · 查看结果' : '参与投票'}}</view>
+        </view>
+
+        <view
+          wx:elif="{{item.type === 'event'}}"
+          class="event-card reveal"
+          style="animation-delay: {{item.delay}}ms"
+          data-id="{{item.event.id}}"
+          bindtap="goEvent"
+          hover-class="press"
+        >
+          <image
+            wx:if="{{item.event.coverUrl && item.event.showCoverInFeed !== false}}"
+            class="event-cover"
+            src="{{item.event.coverUrl}}"
+            mode="widthFix"
+          />
+          <view class="event-body">
+            <view class="event-top">
+              <text class="event-tag">活动</text>
+              <text class="event-time">{{item.event.timeLabel}}</text>
+            </view>
+            <view class="event-title">{{item.event.title}}</view>
+            <view class="event-meta" wx:if="{{item.event.location}}">{{item.event.location}}</view>
+            <view class="event-desc" wx:if="{{item.event.description}}">{{item.event.description}}</view>
+            <view class="event-cta">查看报名</view>
+          </view>
+        </view>
+
+        <view
+          wx:elif="{{item.type === 'post'}}"
+          id="{{item.key}}"
+          class="post-item reveal"
+          style="animation-delay: {{item.delay}}ms"
+        >
+          <view class="post-title">{{item.post.title}}</view>
+          <view class="post-body {{item.expanded ? 'is-open' : 'is-clamp'}}">
+            <view class="post-content">{{item.post.content}}</view>
+            <view wx:if="{{item.post.needExpand && !item.expanded}}" class="post-fade"></view>
+          </view>
+          <view class="post-actions" wx:if="{{item.post.needExpand || item.post.sourceUrl}}">
+            <view
+              wx:if="{{item.post.needExpand}}"
+              class="post-link"
+              data-key="{{item.key}}"
+              catchtap="toggleExpand"
+              hover-class="press-text"
+            >{{item.expanded ? '收起' : '更多'}}</view>
+            <text wx:if="{{item.post.needExpand && item.post.sourceUrl}}" class="post-sep">·</text>
+            <view
+              wx:if="{{item.post.sourceUrl}}"
+              class="post-link is-muted"
+              data-url="{{item.post.sourceUrl}}"
+              catchtap="openSource"
+              hover-class="press-text"
+            >原文</view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:if="{{!feedItems.length}}" class="empty">
+        <view class="empty-text">暂无动态</view>
+      </view>
+      <view wx:elif="{{footerText}}" class="feed-end">{{footerText}}</view>
+    </view>
+  </block>
+
+  <!-- 回顶：滚过约一屏后浮现，避开底栏 -->
+  <view
+    class="back-top {{showBackTop ? 'is-on' : ''}} {{backTopBusy ? 'is-busy' : ''}}"
+    catchtap="scrollToTop"
+    hover-class="back-top-press"
+    hover-stay-time="80"
+    aria-role="button"
+    aria-label="回到顶部"
+  >
+    <view class="back-top-ring">
+      <view class="back-top-chevron"></view>
+      <text class="back-top-label">TOP</text>
+    </view>
   </view>
 </view>

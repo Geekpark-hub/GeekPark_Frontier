@@ -1,18 +1,57 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
-import { requireActiveMember } from '../middleware/auth.js';
+import { requireActiveMember, requireMemberOrVisitor } from '../middleware/auth.js';
+import { sendRegisterSuccessNotice } from '../services/notify.js';
+import { notifyEventCancelled, notifyEventRegistered } from '../services/feishu.js';
 
 const router = Router();
 
-router.get('/', requireActiveMember, async (req, res) => {
+/** 信息流置顶活动：已发布且勾选展示、未结束 */
+router.get('/feed-active', requireMemberOrVisitor, async (_req, res) => {
   try {
     const now = new Date();
+    const events = await prisma.event.findMany({
+      where: {
+        status: 'published',
+        showInFeed: true,
+        endAt: { gte: now },
+      },
+      orderBy: { startAt: 'asc' },
+      take: 20,
+    });
+    res.json({
+      events: events.map((e) => ({
+        id: e.id,
+        title: e.title,
+        coverUrl: e.coverUrl,
+        showCoverInFeed: e.showCoverInFeed !== false,
+        description: e.description,
+        location: e.location,
+        locationLat: e.locationLat,
+        locationLng: e.locationLng,
+        startAt: e.startAt,
+        endAt: e.endAt,
+        registerDeadline: e.registerDeadline,
+        status: e.status,
+        feedPin: Boolean(e.feedPin),
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '获取信息流活动失败' });
+  }
+});
+
+router.get('/', requireMemberOrVisitor, async (req, res) => {
+  try {
+    const now = new Date();
+    const memberId = req.member?.id || '__none__';
     const events = await prisma.event.findMany({
       where: { status: { in: ['published', 'closed'] } },
       orderBy: { startAt: 'desc' },
       include: {
         registrations: {
-          where: { memberId: req.member.id },
+          where: { memberId },
           select: { id: true, status: true },
         },
       },
@@ -58,13 +97,14 @@ router.get('/mine', requireActiveMember, async (req, res) => {
   }
 });
 
-router.get('/:id', requireActiveMember, async (req, res) => {
+router.get('/:id', requireMemberOrVisitor, async (req, res) => {
   try {
+    const memberId = req.member?.id || '__none__';
     const event = await prisma.event.findUnique({
       where: { id: req.params.id },
       include: {
         registrations: {
-          where: { memberId: req.member.id },
+          where: { memberId },
         },
       },
     });
@@ -106,7 +146,8 @@ router.post('/:id/register', requireActiveMember, async (req, res) => {
       willAttend: Boolean(willAttend),
       companions: companions || '',
       specialNeeds: specialNeeds || '',
-      status: 'pending',
+      // 会员提交即算报名成功，后台可再改候补/取消；小程序不再展示「待审核」
+      status: 'approved',
     };
 
     let reg;
@@ -125,10 +166,61 @@ router.post('/:id/register', requireActiveMember, async (req, res) => {
       });
     }
 
+    // 通知失败不影响报名结果
+    sendRegisterSuccessNotice(req.member, event).catch((err) => {
+      console.warn('[notify] register wx', err.message || err);
+    });
+    notifyEventRegistered({
+      member: req.member,
+      event,
+      registration: reg,
+    }).catch((err) => {
+      console.warn('[notify] register feishu', err.message || err);
+    });
+
     res.json({ registration: reg });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '报名失败' });
+  }
+});
+
+router.post('/:id/cancel-register', requireActiveMember, async (req, res) => {
+  try {
+    const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!event) return res.status(404).json({ error: '活动不存在' });
+    const now = new Date();
+    // 活动未结束前均可取消（含已开始）；结束后不可取消
+    if (event.status === 'closed' || new Date(event.endAt) < now) {
+      return res.status(400).json({ error: '活动已结束，无法取消报名' });
+    }
+
+    const existing = await prisma.registration.findUnique({
+      where: {
+        eventId_memberId: { eventId: event.id, memberId: req.member.id },
+      },
+    });
+    if (!existing || existing.status === 'cancelled') {
+      return res.status(400).json({ error: '您尚未报名该活动' });
+    }
+
+    const reg = await prisma.registration.update({
+      where: { id: existing.id },
+      data: { status: 'cancelled' },
+    });
+
+    notifyEventCancelled({
+      member: req.member,
+      event,
+      registration: reg,
+    }).catch((err) => {
+      console.warn('[notify] cancel feishu', err.message || err);
+    });
+
+    res.json({ registration: reg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '取消报名失败' });
   }
 });
 
@@ -139,12 +231,17 @@ function formatEvent(e) {
     coverUrl: e.coverUrl,
     description: e.description,
     location: e.location,
+    locationLat: e.locationLat,
+    locationLng: e.locationLng,
     agenda: e.agenda,
     guests: e.guests,
     startAt: e.startAt,
     endAt: e.endAt,
     registerDeadline: e.registerDeadline,
     status: e.status,
+    showInFeed: Boolean(e.showInFeed),
+    showCoverInFeed: e.showCoverInFeed !== false,
+    feedPin: Boolean(e.feedPin),
     myStatus: e.registrations?.[0]?.status || null,
   };
 }

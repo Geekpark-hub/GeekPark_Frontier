@@ -5,10 +5,10 @@ const { track } = require('../../utils/track');
 Page({
   data: {
     allowed: false,
+    contentError: false,
     form: {
       content: '',
-      startAt: '',
-      endAt: '',
+      time: '',
       location: '',
       connectWith: '',
     },
@@ -24,24 +24,34 @@ Page({
   },
 
   onInput(e) {
-    this.setData({ ['form.' + e.currentTarget.dataset.key]: e.detail.value });
-  },
-
-  onDate(e) {
-    this.setData({ ['form.' + e.currentTarget.dataset.key]: e.detail.value });
+    const key = e.currentTarget.dataset.key;
+    const patch = { ['form.' + key]: e.detail.value };
+    if (key === 'content' && this.data.contentError && String(e.detail.value || '').trim()) {
+      patch.contentError = false;
+    }
+    this.setData(patch);
   },
 
   async submit() {
     if (!this.data.allowed) return;
     if (!this.data.form.content.trim()) {
-      wx.showToast({ title: '请填写需求内容', icon: 'none' });
+      this.setData({ contentError: true });
       return;
     }
+    this.setData({ contentError: false });
     try {
+      const time = String(this.data.form.time || '').trim();
       await request({
         url: '/requests',
         method: 'POST',
-        data: this.data.form,
+        loading: true,
+        data: {
+          content: this.data.form.content,
+          startAt: time,
+          endAt: '',
+          location: this.data.form.location,
+          connectWith: this.data.form.connectWith,
+        },
       });
       track('request_submit', { path: '/pages/mine/request-create' });
       wx.showToast({ title: '已提交', icon: 'success' });

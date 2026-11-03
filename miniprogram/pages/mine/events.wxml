@@ -14,14 +14,14 @@
     <view
       wx:for="{{items}}"
       wx:key="id"
-      class="card"
+      class="card {{item.phase === 'ended' || item.phase === 'cancelled' ? 'is-muted' : ''}}"
       data-id="{{item.event.id}}"
       bindtap="goDetail"
       hover-class="press"
     >
       <view class="row">
         <view class="title">{{item.event.title}}</view>
-        <view class="chip">{{statusText[item.status] || item.status}}</view>
+        <view class="chip chip-{{item.chipTone}}">{{item.chipText}}</view>
       </view>
       <view class="meta" wx:if="{{item.timeLabel}}">{{item.timeLabel}}</view>
       <view class="meta">{{item.event.location || '地点待定'}}</view>

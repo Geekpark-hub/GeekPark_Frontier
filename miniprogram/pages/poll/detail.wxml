@@ -16,7 +16,7 @@
     <view
       wx:for="{{poll.options}}"
       wx:key="id"
-      class="option {{selectedMap[item.id] ? 'on' : ''}} {{poll.hasVoted ? 'disabled' : ''}}"
+      class="option {{selectedMap[item.id] ? 'on' : ''}} {{poll.hasVoted || isPending ? 'disabled' : ''}}"
       data-id="{{item.id}}"
       bindtap="toggleOption"
     >
@@ -25,7 +25,14 @@
     </view>
   </view>
 
-  <button wx:if="{{!poll.hasVoted && poll.status === 'published'}}" class="btn-primary submit" bindtap="submitVote">提交投票</button>
+  <view
+    wx:if="{{isPending && !poll.hasVoted && poll.status === 'published'}}"
+    class="action-lock"
+  >
+    <view class="action-lock-title">{{isExpired ? '会员已过期' : '待运营绑定会员'}}</view>
+    <view class="action-lock-desc">{{isExpired ? '续期后即可投票' : '绑定完成后即可投票'}}</view>
+  </view>
+  <button wx:elif="{{!poll.hasVoted && poll.status === 'published'}}" class="btn-primary submit" bindtap="submitVote">提交投票</button>
   <view wx:elif="{{poll.hasVoted}}" class="done">您已投票，提交后不可修改</view>
   <view wx:elif="{{poll.status === 'ended'}}" class="done">投票已结束</view>
 

@@ -1,54 +1,55 @@
 .feed-page {
   min-height: 100vh;
   background: #f7f5f1;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
+/* 按原图比例自适应高度，完整展示 */
 .hero {
-  margin: 20rpx 32rpx 4rpx;
-  border-radius: 16rpx;
+  margin: 24rpx 28rpx 8rpx;
+  border-radius: 12rpx;
   overflow: hidden;
-  background: #1a1a1a;
-  height: 340rpx;
+  background: #ebe6dc;
 }
 
 .hero-img {
   display: block;
   width: 100%;
-  height: 100%;
-  transform: scale(1.03);
-  animation: hero-zoom 8s ease-out both;
+  height: auto;
+  vertical-align: top;
 }
 
 .feed-body {
-  padding: 8rpx 36rpx 48rpx;
+  padding: 12rpx 40rpx 56rpx;
 }
 
 .reveal {
-  animation: rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .date-label {
-  margin: 40rpx 0 18rpx;
-  font-size: 20rpx;
-  color: #9a9286;
-  letter-spacing: 4rpx;
+  margin: 48rpx 0 20rpx;
+  font-size: 22rpx;
+  color: #a39b8f;
+  letter-spacing: 3rpx;
+  font-weight: 400;
 }
 
 .poll-card {
-  margin-bottom: 28rpx;
-  padding: 28rpx;
-  border-radius: 16rpx;
-  background: #14202b;
-  color: #fff;
-  transition: opacity 0.55s ease, transform 0.55s ease, margin 0.55s ease, padding 0.55s ease, max-height 0.55s ease;
+  margin-bottom: 36rpx;
+  padding: 32rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  border: 1rpx solid rgba(20, 32, 43, 0.1);
+  color: #14202b;
+  transition: opacity 0.55s ease, transform 0.55s ease, margin 0.55s ease, padding 0.55s ease;
 }
 
 .poll-card.is-leaving {
   animation: none;
   opacity: 0;
-  transform: translateY(-20rpx) scale(0.98);
+  transform: translateY(-16rpx);
   margin-bottom: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -59,79 +60,127 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
 }
 
 .poll-tag {
-  font-size: 18rpx;
+  font-size: 20rpx;
   letter-spacing: 3rpx;
-  color: rgba(255, 255, 255, 0.55);
+  color: #9a9286;
 }
 
 .poll-deadline {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 22rpx;
+  color: #6d7883;
 }
 
 .poll-title {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
+  letter-spacing: 0.5rpx;
+  color: #14202b;
 }
 
 .poll-cta {
-  margin-top: 18rpx;
+  margin-top: 24rpx;
   font-size: 24rpx;
   letter-spacing: 2rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: #14202b;
+}
+
+.poll-card.is-voted .poll-tag {
+  color: #8f877c;
+}
+
+.poll-card.is-voted .poll-cta {
+  color: #8f877c;
 }
 
 .post-item {
-  padding: 12rpx 0 36rpx;
-  margin-bottom: 4rpx;
-  border-bottom: 1rpx solid rgba(20, 32, 43, 0.08);
+  padding: 8rpx 0 44rpx;
+  margin-bottom: 8rpx;
+  border-bottom: 1rpx solid rgba(20, 32, 43, 0.06);
 }
 
 .post-title {
-  font-size: 36rpx;
-  font-weight: 650;
-  color: #14202b;
-  line-height: 1.4;
-  margin-bottom: 14rpx;
-  letter-spacing: 0.5rpx;
+  font-size: 38rpx;
+  font-weight: 600;
+  color: #1a1f24;
+  line-height: 1.45;
+  margin-bottom: 18rpx;
+  letter-spacing: 0.2rpx;
+}
+
+.post-body {
+  position: relative;
+  overflow: hidden;
+  /* 收起约 5 行；展开给足上限，用 max-height 过渡避免改文档流抖动 */
+  max-height: calc(32rpx * 1.9 * 5.15);
+  transition: max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.post-body.is-open {
+  /* 会员动态正文通常不长；过大的 max-height 会让过渡前半段发闷 */
+  max-height: 1600px;
 }
 
 .post-content {
-  color: #4a524c;
-  font-size: 28rpx;
-  line-height: 1.85;
+  color: #3f474d;
+  font-size: 32rpx;
+  line-height: 1.9;
+  letter-spacing: 0.4rpx;
   white-space: pre-wrap;
-  transition: opacity 220ms ease;
+  word-break: break-word;
+  text-align: justify;
+  text-justify: inter-ideograph;
 }
 
-.post-content.is-clamp {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
-  overflow: hidden;
+.post-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 88rpx;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 245, 241, 0) 0%,
+    rgba(247, 245, 241, 0.72) 45%,
+    #f7f5f1 100%
+  );
+  transition: opacity 0.28s ease;
 }
 
-.post-content.is-open {
-  animation: content-open 280ms ease both;
+.post-body.is-open .post-fade {
+  opacity: 0;
 }
 
 .post-actions {
   display: flex;
-  gap: 32rpx;
+  align-items: center;
+  gap: 12rpx;
   margin-top: 18rpx;
+  min-height: 40rpx;
 }
 
-.post-more {
+.post-link {
   font-size: 24rpx;
-  color: #14202b;
+  color: #1a1f24;
   letter-spacing: 1rpx;
   font-weight: 500;
-  transition: opacity 160ms ease;
+  padding: 6rpx 0;
+}
+
+.post-link.is-muted {
+  color: #8f877c;
+  font-weight: 400;
+}
+
+.post-sep {
+  font-size: 22rpx;
+  color: #c4bbb0;
+  line-height: 1;
 }
 
 .press {
@@ -139,32 +188,32 @@
 }
 
 .press-text {
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .feed-end {
-  padding: 40rpx 0 16rpx;
+  padding: 48rpx 0 20rpx;
   text-align: center;
-  color: #b0a89c;
-  font-size: 20rpx;
-  letter-spacing: 3rpx;
+  color: #b8aea2;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
 }
 
 .empty {
-  padding: 100rpx 24rpx;
+  padding: 120rpx 24rpx;
   text-align: center;
 }
 
 .empty-text {
-  color: #8a8378;
-  font-size: 24rpx;
+  color: #9a9286;
+  font-size: 26rpx;
   letter-spacing: 2rpx;
 }
 
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(16rpx);
+    transform: translateY(12rpx);
   }
   to {
     opacity: 1;
@@ -172,18 +221,141 @@
   }
 }
 
-@keyframes hero-zoom {
-  from {
-    opacity: 0.75;
-    transform: scale(1.08);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1.03);
-  }
+/* —— 回顶 —— */
+.back-top {
+  position: fixed;
+  right: 28rpx;
+  bottom: calc(152rpx + env(safe-area-inset-bottom));
+  z-index: 80;
+  width: 96rpx;
+  height: 96rpx;
+  opacity: 0;
+  transform: translateY(18rpx) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes content-open {
-  from { opacity: 0.55; }
-  to { opacity: 1; }
+.back-top.is-on {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.back-top.is-busy {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.back-top-ring {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: rgba(247, 245, 241, 0.92);
+  border: 1rpx solid rgba(20, 32, 43, 0.1);
+  box-shadow:
+    0 10rpx 28rpx rgba(20, 32, 43, 0.08),
+    0 1rpx 0 rgba(255, 255, 255, 0.65) inset;
+  backdrop-filter: blur(12px);
+}
+
+.back-top-chevron {
+  width: 18rpx;
+  height: 18rpx;
+  margin-top: 4rpx;
+  border-left: 3rpx solid #14202b;
+  border-top: 3rpx solid #14202b;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+
+.back-top-label {
+  margin-top: -2rpx;
+  font-size: 16rpx;
+  line-height: 1;
+  letter-spacing: 2rpx;
+  font-weight: 600;
+  color: #14202b;
+}
+
+.back-top-press {
+  opacity: 0.88;
+  transform: scale(0.94) !important;
+}
+
+.event-card {
+  margin-bottom: 36rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  border: 1rpx solid rgba(20, 32, 43, 0.1);
+  color: #14202b;
+  overflow: hidden;
+}
+
+.event-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #eef2f5;
+  vertical-align: top;
+}
+
+.event-body {
+  padding: 28rpx 32rpx 32rpx;
+}
+
+.event-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.event-tag {
+  font-size: 20rpx;
+  letter-spacing: 3rpx;
+  color: #9a9286;
+}
+
+.event-time {
+  font-size: 22rpx;
+  color: #6d7883;
+}
+
+.event-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.event-meta {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #6d7883;
+  line-height: 1.45;
+}
+
+.event-desc {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #6d7883;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.event-cta {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  letter-spacing: 2rpx;
+  color: #14202b;
 }

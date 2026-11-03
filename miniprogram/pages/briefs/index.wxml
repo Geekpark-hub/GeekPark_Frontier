@@ -1,0 +1,39 @@
+<view class="container state" wx:if="{{loading && !list.length}}">
+  <view class="state-text">加载中…</view>
+</view>
+
+<view class="container state" wx:elif="{{error && !list.length}}">
+  <view class="state-text">{{error}}</view>
+  <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+</view>
+
+<view class="container" wx:else>
+  <view class="head">
+    <view class="eyebrow">MEMBER ONLY</view>
+    <view class="title">前沿社内参</view>
+    <view class="desc">仅限会员内部阅读，请勿外传或转发。</view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty">暂无内参</view>
+
+  <view
+    wx:for="{{list}}"
+    wx:key="id"
+    class="card"
+    data-id="{{item.id}}"
+    bindtap="openBrief"
+    hover-class="press"
+  >
+    <view class="card-title">{{item.title}}</view>
+    <view class="card-meta" wx:if="{{item.guestName || item.publishedLabel}}">
+      <text wx:if="{{item.guestName}}">嘉宾 {{item.guestName}}</text>
+      <text wx:if="{{item.guestName && item.publishedLabel}}"> · </text>
+      <text wx:if="{{item.publishedLabel}}">{{item.publishedLabel}}</text>
+    </view>
+    <view class="card-summary" wx:if="{{item.summary}}">{{item.summary}}</view>
+  </view>
+
+  <view class="footer" wx:if="{{list.length}}">
+    {{hasMore ? (loading ? '加载中…' : '上拉加载更多') : '已全部加载'}}
+  </view>
+</view>

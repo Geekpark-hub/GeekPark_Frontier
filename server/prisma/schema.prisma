@@ -13,8 +13,27 @@ model Member {
   name                String
   company             String    @default("")
   title               String    @default("")
-  phone               String    @unique
+  /// 可选；后台管理员登录仍可用手机号。小程序会员认证改走邀请码
+  phone               String?   @unique
+  /// 备号 JSON 数组，如 ["13800138000"]；解绑换绑不覆盖主号，新号记入此处
+  phonesExtra         String    @default("[]")
+  /// 首次用户码登录后是否已询问过微信手机号授权（同意/拒绝都记；已弃用拉起）
+  phoneAuthAskedAt    DateTime?
+  /// accept | reject | ""
+  phoneAuthResult     String    @default("")
+  /// 微信昵称（用户授权填写，不覆盖档案 name）
+  wxNickname          String    @default("")
+  /// 是否已询问过微信昵称（同意/拒绝都记；打开小程序弹一次）
+  wxNickAskedAt       DateTime?
+  /// accept | reject | ""
+  wxNickResult        String    @default("")
+  /// 小程序入会用户名/邀请码（唯一）；格式如 YYF1703
+  inviteCode          String?   @unique
   status              String    @default("active") // active | pending | expired
+  /// 生日（档案）
+  birthday            DateTime?
+  /// 加入前沿社时间（档案字段，可与 createdAt 不同）
+  joinedAt            DateTime?
   expiresAt           DateTime?
   isAdmin             Boolean   @default(false)
   isSuperAdmin        Boolean   @default(false)
@@ -25,8 +44,16 @@ model Member {
   xAccount            String    @default("")
   youtube             String    @default("")
   bilibili            String    @default("")
+  /// 检索别名，分号分隔（中英文名/公司/产品），用于 RSS 匹配与辅助搜索
+  rssKeywords         String    @default("")
+  /// 会员专属 Google News RSS（中文）
+  googleNewsRssZh     String    @default("")
+  /// 会员专属 Google News RSS（英文）
+  googleNewsRssEn     String    @default("")
   lastExpiryNoticeAt  DateTime?
   expiryNoticeStage   String    @default("") // "" | 7 | 3 | 0
+  /// 后台登录密码（bcrypt）；空则仅手机号可进，登录后需设置
+  adminPasswordHash   String    @default("")
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -36,6 +63,24 @@ model Member {
   postsCreated   FeedPost[]     @relation("PostAuthor")
   relatedPosts   FeedPost[]     @relation("RelatedMember")
   activityEvents ActivityEvent[]
+  notifyLogs     NotifyLog[]
+}
+
+/// 小程序微信进入登记：未匹配到会员时留档，供后台人工绑定
+model WxEntry {
+  id            String    @id @default(cuid())
+  openid        String    @unique
+  wxNickname    String    @default("")
+  phone         String    @default("")
+  nickAskedAt   DateTime?
+  /// pending | bound | ignored
+  status        String    @default("pending")
+  boundMemberId String?
+  boundAt       DateTime?
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model FeedPost {
@@ -51,6 +96,8 @@ model FeedPost {
   relatedMemberId  String?
   relatedMember    Member?  @relation("RelatedMember", fields: [relatedMemberId], references: [id])
   dedupeKey        String?  @unique
+  /// 标题+正文指纹，用于跨 URL 内容去重（Google News 跳转链 vs 原文）
+  contentDedupeKey String?  @unique
   aiReason         String   @default("")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -65,6 +112,9 @@ model Poll {
   endAt       DateTime
   status      String   @default("draft") // draft | published | ended
   showVoters  Boolean  @default(false)
+  /// 微信 URL Link 缓存（对外固定短链 /s/p/:id 背后跳转）
+  wxUrlLink         String    @default("")
+  wxUrlLinkExpireAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -102,16 +152,31 @@ model Event {
   coverUrl         String    @default("")
   description      String    @default("")
   location         String    @default("")
+  /// 小程序 wx.openLocation 用；后台选点填写
+  locationLat      Float?
+  locationLng      Float?
   agenda           String    @default("")
   guests           String    @default("")
   startAt          DateTime
   endAt            DateTime
   registerDeadline DateTime?
   status           String    @default("draft") // draft | published | closed
+  /// 是否展示在小程序动态信息流
+  showInFeed       Boolean   @default(false)
+  /// 信息流卡片是否展示封面图（活动详情页仍可用 coverUrl）；新建默认关
+  showCoverInFeed  Boolean   @default(false)
+  /// true=信息流置顶（投票后）；false=按活动开始日插入信息流时间线
+  feedPin          Boolean   @default(false)
+  /// 微信 URL Link 缓存（对外固定短链 /s/e/:id 背后跳转）
+  wxUrlLink         String    @default("")
+  wxUrlLinkExpireAt DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   registrations Registration[]
+
+  @@index([showInFeed, status, startAt])
+  @@index([showInFeed, feedPin, startAt])
 }
 
 model Registration {
@@ -122,9 +187,13 @@ model Registration {
   member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
   name         String
   willAttend   Boolean  @default(true)
+  /// 运营标注是否实际参加：null 未标 / true 已参加 / false 未参加
+  attended     Boolean?
   companions   String   @default("")
   specialNeeds String   @default("")
   status       String   @default("pending") // pending | approved | waitlist | cancelled
+  /// 活动开始前提醒是否已发（微信订阅消息）
+  eventReminderSentAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -136,8 +205,9 @@ model Request {
   memberId    String
   member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   content     String
-  startAt     DateTime?
-  endAt       DateTime?
+  /// 自由文本时间（不再强制日期选择器）
+  startAt     String    @default("")
+  endAt       String    @default("")
   location    String    @default("")
   connectWith String    @default("")
   status      String    @default("submitted") // submitted | processing | done
@@ -155,12 +225,79 @@ model JobLog {
   createdAt DateTime @default(now())
 }
 
+/// AI 抓取用的 RSS / 信息源（管理后台可增删）
+model NewsSource {
+  id        String   @id @default(cuid())
+  /// 稳定键，内置源用 geekpark / 36kr 等；自定义可空
+  key       String?  @unique
+  name      String
+  url       String   @unique
+  enabled   Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items NewsSourceItem[]
+}
+
+/// 每日拉取沉淀的 RSS 条目（保留约一个月，弥补源站 feed 窗口过短）
+model NewsSourceItem {
+  id          String    @id @default(cuid())
+  sourceId    String
+  source      NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  url         String    @unique
+  title       String    @default("")
+  snippet     String    @default("")
+  publishedAt DateTime?
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @updatedAt
+
+  @@index([sourceId, publishedAt])
+  @@index([publishedAt])
+  @@index([firstSeenAt])
+}
+
+/// 后台操作审计（仅超级管理员可查看）
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   @default("")
+  actorName  String   @default("")
+  actorPhone String   @default("")
+  method     String
+  path       String
+  /// 可读动作，如「删除动态」「运行 AI 抓取」
+  action     String   @default("")
+  targetType String   @default("")
+  targetId   String   @default("")
+  statusCode Int      @default(0)
+  success    Boolean  @default(true)
+  ip         String   @default("")
+  userAgent  String   @default("")
+  /// JSON：query
+  query      String   @default("{}")
+  /// JSON：脱敏后的 body 摘要
+  body       String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([method, createdAt])
+}
+
+/// 站点级配置（键值），如小程序动态页头图
+model AppSetting {
+  key       String   @id
+  value     String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
 /// 会员行为埋点（轻量活跃分析）
 model ActivityEvent {
   id        String   @id @default(cuid())
   memberId  String
   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  /// app_open | page_view | poll_view | poll_vote | event_view | event_register | request_submit | open_source
+  /// app_open | page_view | poll_view | poll_vote | event_view | event_register | …
   event     String
   path      String   @default("")
   targetId  String   @default("")
@@ -175,4 +312,57 @@ model ActivityEvent {
   @@index([memberId, createdAt])
   @@index([event, createdAt])
   @@index([createdAt])
+}
+
+/// 前沿社内参（会员专属长文；Word/PDF 导入）
+model Brief {
+  id                String    @id @default(cuid())
+  title             String
+  guestName         String    @default("")
+  summary           String    @default("")
+  /// 阅读正文 HTML（导入后可校对）
+  contentHtml       String    @default("")
+  /// draft | published | archived
+  status            String    @default("draft")
+  /// docx | pdf | manual
+  sourceType        String    @default("manual")
+  /// 原文存档 URL（仅后台；小程序不暴露）
+  sourceFileUrl     String    @default("")
+  publishedAt       DateTime?
+  wxUrlLink         String    @default("")
+  wxUrlLinkExpireAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([createdAt])
+}
+
+/// 消息推送日志（微信订阅 / 飞书等）
+model NotifyLog {
+  id           String   @id @default(cuid())
+  /// wechat_subscribe | feishu
+  channel      String
+  /// expiry | register | event_remind | event_register_feishu | event_cancel_feishu | …
+  kind         String
+  memberId     String?
+  member       Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  memberName   String   @default("")
+  targetType   String   @default("") // event | poll | member | …
+  targetId     String   @default("")
+  targetTitle  String   @default("")
+  templateId   String   @default("")
+  page         String   @default("")
+  success      Boolean  @default(false)
+  mode         String   @default("")
+  message      String   @default("")
+  /// JSON 摘要
+  detail       String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([channel, createdAt])
+  @@index([kind, createdAt])
+  @@index([memberId, createdAt])
+  @@index([success, createdAt])
 }

@@ -1,23 +1,24 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
-import { requireActiveMember } from '../middleware/auth.js';
+import { requireActiveMember, requireMemberOrVisitor } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/active', requireActiveMember, async (req, res) => {
+router.get('/active', requireMemberOrVisitor, async (req, res) => {
   try {
     const now = new Date();
+    const memberId = req.member?.id || '__none__';
+    // 进行中投票：仅看 status=published（不按 endAt 自动下架，需后台点「结束」）
     const polls = await prisma.poll.findMany({
       where: {
         status: 'published',
         startAt: { lte: now },
-        endAt: { gte: now },
       },
       include: {
         options: { orderBy: { sort: 'asc' } },
-        votes: { where: { memberId: req.member.id }, select: { optionId: true } },
+        votes: { where: { memberId }, select: { optionId: true } },
       },
-      orderBy: { endAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     res.json({
@@ -77,8 +78,9 @@ router.get('/mine', requireActiveMember, async (req, res) => {
   }
 });
 
-router.get('/:id', requireActiveMember, async (req, res) => {
+router.get('/:id', requireMemberOrVisitor, async (req, res) => {
   try {
+    const member = req.member;
     const poll = await prisma.poll.findUnique({
       where: { id: req.params.id },
       include: {
@@ -86,12 +88,12 @@ router.get('/:id', requireActiveMember, async (req, res) => {
         votes: true,
       },
     });
-    if (!poll || (poll.status === 'draft' && !req.member.isAdmin)) {
+    if (!poll || (poll.status === 'draft' && !(member && member.isAdmin))) {
       return res.status(404).json({ error: '投票不存在' });
     }
 
-    const myVotes = poll.votes.filter((v) => v.memberId === req.member.id);
-    const canSeeResults = poll.status === 'ended' || myVotes.length > 0 || req.member.isAdmin;
+    const myVotes = member ? poll.votes.filter((v) => v.memberId === member.id) : [];
+    const canSeeResults = poll.status === 'ended' || myVotes.length > 0 || Boolean(member?.isAdmin);
 
     let results = null;
     let voters = null;
@@ -132,10 +134,7 @@ router.get('/:id', requireActiveMember, async (req, res) => {
       }
     }
 
-    // 时间已过但状态尚未被定时任务刷成 ended 时，对前端按已结束处理
-    const effectiveStatus =
-      poll.status === 'published' && new Date() > poll.endAt ? 'ended' : poll.status;
-
+    // 是否结束仅以后台 status 为准（不按 endAt 自动结束）
     res.json({
       poll: {
         id: poll.id,
@@ -144,7 +143,7 @@ router.get('/:id', requireActiveMember, async (req, res) => {
         multiSelect: poll.multiSelect,
         startAt: poll.startAt,
         endAt: poll.endAt,
-        status: effectiveStatus,
+        status: poll.status,
         showVoters: poll.showVoters,
         options: poll.options.map((o) => ({ id: o.id, text: o.text })),
         myOptionIds: myVotes.map((v) => v.optionId),
@@ -176,8 +175,8 @@ router.post('/:id/vote', requireActiveMember, async (req, res) => {
     }
 
     const now = new Date();
-    if (now < poll.startAt || now > poll.endAt) {
-      return res.status(400).json({ error: '不在投票时间范围内' });
+    if (now < poll.startAt) {
+      return res.status(400).json({ error: '投票尚未开始' });
     }
 
     if (poll.votes.length > 0) {

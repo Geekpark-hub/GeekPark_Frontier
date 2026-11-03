@@ -15,13 +15,11 @@
     <view class="line" wx:if="{{member.company || member.title}}">
       {{member.company}}{{member.company && member.title ? ' · ' : ''}}{{member.title}}
     </view>
-    <view class="expire" wx:if="{{expiresLabel}}">{{expiresLabel}}</view>
-    <view class="badge">{{statusText[member.status] || member.status}}</view>
+    <view class="badge">会员状态：{{statusText[member.status] || member.status}}</view>
   </view>
 
-  <view class="meta-block" wx:if="{{member.phone || hasLinks}}">
-    <view class="phone" wx:if="{{phoneMasked}}">手机 {{phoneMasked}}</view>
-    <view class="links" wx:if="{{hasLinks}}">
+  <view class="meta-block" wx:if="{{hasLinks}}">
+    <view class="links">
       <view
         class="link-line tap"
         wx:if="{{member.linkedin}}"

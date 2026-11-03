@@ -1,18 +1,19 @@
 import { Router } from 'express';
-import { requireActiveMember } from '../middleware/auth.js';
+import { requireMemberOrVisitor } from '../middleware/auth.js';
 import { normalizeTrackPayload, recordActivityEvent } from '../services/analytics.js';
 
 const router = Router();
 
-/** 小程序埋点：单条或批量 */
-router.post('/track', requireActiveMember, async (req, res) => {
+/** 小程序埋点：单条或批量（访客仅记成功数，不落会员 id） */
+router.post('/track', requireMemberOrVisitor, async (req, res) => {
   try {
     const body = req.body || {};
     const list = Array.isArray(body.events) ? body.events : [body];
     let saved = 0;
+    const memberId = req.member?.id || null;
     for (const item of list.slice(0, 20)) {
       if (!normalizeTrackPayload(item)) continue;
-      await recordActivityEvent(req.member.id, item, req);
+      if (memberId) await recordActivityEvent(memberId, item, req);
       saved += 1;
     }
     res.json({ ok: true, saved });

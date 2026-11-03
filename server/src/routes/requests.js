@@ -29,6 +29,30 @@ router.get('/mine', requireActiveMember, async (req, res) => {
   }
 });
 
+router.get('/:id', requireActiveMember, async (req, res) => {
+  try {
+    const item = await prisma.request.findFirst({
+      where: { id: req.params.id, memberId: req.member.id },
+    });
+    if (!item) return res.status(404).json({ error: '需求不存在' });
+    res.json({
+      request: {
+        id: item.id,
+        content: item.content,
+        startAt: item.startAt,
+        endAt: item.endAt,
+        location: item.location,
+        connectWith: item.connectWith,
+        status: item.status,
+        createdAt: item.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '获取需求详情失败' });
+  }
+});
+
 router.post('/', requireActiveMember, async (req, res) => {
   try {
     const { content, startAt, endAt, location = '', connectWith = '' } = req.body || {};
@@ -40,8 +64,8 @@ router.post('/', requireActiveMember, async (req, res) => {
       data: {
         memberId: req.member.id,
         content: String(content).trim(),
-        startAt: startAt ? new Date(startAt) : null,
-        endAt: endAt ? new Date(endAt) : null,
+        startAt: startAt != null ? String(startAt).trim() : '',
+        endAt: endAt != null ? String(endAt).trim() : '',
         location,
         connectWith,
         status: 'submitted',

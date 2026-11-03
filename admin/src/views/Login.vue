@@ -14,11 +14,20 @@
     <section class="panel-wrap">
       <div class="form-panel">
         <h2>管理员登录</h2>
-        <p class="hint">使用管理员手机号登录。根超管：17611294568</p>
 
         <el-form class="form" label-position="top" @submit.prevent>
           <el-form-item label="手机号">
-            <el-input v-model="phone" size="large" placeholder="17611294568" clearable maxlength="11" />
+            <el-input v-model="phone" size="large" placeholder="请输入管理员手机号" clearable maxlength="11" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input
+              v-model="password"
+              type="password"
+              size="large"
+              placeholder="已设置密码则必填；首次可留空"
+              show-password
+              @keyup.enter="login"
+            />
           </el-form-item>
           <el-button
             class="submit"
@@ -32,6 +41,21 @@
         </el-form>
       </div>
     </section>
+
+    <el-dialog v-model="pwdDialog" title="设置后台密码" width="420px" :close-on-click-modal="false">
+      <p class="hint">首次登录请设置密码，之后需手机号 + 密码进入。</p>
+      <el-form label-position="top">
+        <el-form-item label="新密码（至少 6 位）">
+          <el-input v-model="newPassword" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="确认密码">
+          <el-input v-model="newPassword2" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button type="primary" :loading="pwdLoading" @click="savePassword">保存并进入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -39,27 +63,67 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import api from '../api';
+import api, { seedAdminSession } from '../api';
 import { firstAllowedPath } from '../menus';
 
 const router = useRouter();
-const phone = ref('17611294568');
+const phone = ref('');
+const password = ref('');
 const loading = ref(false);
+const pwdDialog = ref(false);
+const newPassword = ref('');
+const newPassword2 = ref('');
+const pwdLoading = ref(false);
+let pendingMember = null;
 
 async function login() {
   loading.value = true;
   try {
     const res = await api.post('/auth/admin-login', {
       phone: phone.value || undefined,
+      password: password.value || undefined,
     });
     localStorage.setItem('admin_token', res.token);
     localStorage.setItem('admin_member', JSON.stringify(res.member));
+    seedAdminSession(res.member);
+    if (res.needSetPassword) {
+      pendingMember = res.member;
+      pwdDialog.value = true;
+      ElMessage.info('请先设置后台密码');
+      return;
+    }
     ElMessage.success('登录成功');
     router.push(firstAllowedPath(res.member));
   } catch (e) {
     ElMessage.error(e.message);
   } finally {
     loading.value = false;
+  }
+}
+
+async function savePassword() {
+  if (!newPassword.value || newPassword.value.length < 6) {
+    ElMessage.warning('密码至少 6 位');
+    return;
+  }
+  if (newPassword.value !== newPassword2.value) {
+    ElMessage.warning('两次密码不一致');
+    return;
+  }
+  pwdLoading.value = true;
+  try {
+    const res = await api.post('/auth/admin-password', { password: newPassword.value });
+    if (res.member) {
+      localStorage.setItem('admin_member', JSON.stringify(res.member));
+      seedAdminSession(res.member);
+    }
+    pwdDialog.value = false;
+    ElMessage.success('密码已设置');
+    router.push(firstAllowedPath(res.member || pendingMember));
+  } catch (e) {
+    ElMessage.error(e.message || '设置失败');
+  } finally {
+    pwdLoading.value = false;
   }
 }
 </script>
@@ -166,10 +230,8 @@ async function login() {
   font-weight: 700;
 }
 
-.hint {
-  margin: 8px 0 28px;
-  color: var(--muted);
-  font-size: 14px;
+.form {
+  margin-top: 28px;
 }
 
 .form :deep(.el-form-item) {
@@ -185,6 +247,13 @@ async function login() {
   margin-top: 8px;
   height: 46px;
   font-size: 15px;
+}
+
+.hint {
+  margin: 0 0 12px;
+  color: #6d7883;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 @keyframes fade-in {

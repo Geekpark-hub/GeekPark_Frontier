@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { ElNotification } from 'element-plus';
-import api from '../api';
+import api, { goLoginPage, isOnLoginPage } from '../api';
 
 const currentRun = ref(null);
 const pendingAuto = ref(0);
@@ -69,9 +69,7 @@ async function tick() {
     // Token 失效时停止轮询，避免每 3 秒刷一次错误
     if (!localStorage.getItem('admin_token')) {
       stopAiJobMonitor();
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
-      }
+      if (!isOnLoginPage()) goLoginPage();
     }
   }
 }

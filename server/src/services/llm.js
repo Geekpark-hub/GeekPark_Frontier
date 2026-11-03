@@ -34,31 +34,51 @@ export function getLlmStatus() {
   };
 }
 
-export async function refineNewsItem({ member, item }) {
+/**
+ * @param {{ member: object, item: object, existingPosts?: Array<{ id?: string, title?: string, content?: string, sourceUrl?: string }> }} args
+ */
+export async function refineNewsItem({ member, item, existingPosts = [] }) {
   const provider = providerName();
   if (provider === 'openai') {
-    return refineWithOpenAI({ member, item });
+    return refineWithOpenAI({ member, item, existingPosts });
   }
-  return refineMock({ member, item });
+  return refineMock({ member, item, existingPosts });
 }
 
-async function refineWithOpenAI({ member, item }) {
+function summarizeExistingPosts(existingPosts = []) {
+  return (existingPosts || [])
+    .slice(0, 25)
+    .map((p, i) => ({
+      i: i + 1,
+      title: String(p.title || '').slice(0, 120),
+      content: String(p.content || '').slice(0, 280),
+      sourceUrl: String(p.sourceUrl || '').slice(0, 200),
+    }))
+    .filter((p) => p.title || p.content);
+}
+
+async function refineWithOpenAI({ member, item, existingPosts = [] }) {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('缺少 MODELINK_API_KEY / LLM_API_KEY');
 
   const base = (process.env.LLM_BASE_URL || 'https://api.modelink.ai/v1').replace(/\/$/, '');
   const model = process.env.LLM_MODEL || 'deepseek/deepseek-v4-pro';
+  const existing = summarizeExistingPosts(existingPosts);
 
-  const system = `你是「前沿社」会员动态编辑。根据公开信息整理会员/公司动态。
+  const system = `你是「前沿社」会员动态编辑。根据「已抓取的页面正文」整理会员/公司动态。
 规则：
-1. 必须与会员姓名或其公司名称明确相关；正文/标题里应能对上公司名或人名
-2. 只保留近一个月、值得会员关注的重要公开信息（融资、产品、合作、任命、上市、重要采访等）
-3. 标题简洁客观；正文 100-300 字；不夸张、不营销、不用套话
-4. 以下情况必须 accepted=false：
+1. 必须以 pageText / title 为准；搜索摘要仅供参考；禁止脑补正文没有的事实、身份或栏目名
+2. 必须与会员姓名或其公司名称明确相关
+3. 只保留近一个月、有明确事件节点的单篇公开信息（融资、产品发布、合作、任命、上市、活动启动、重要专访等）
+4. 标题简洁客观；正文 100-300 字；不夸张、不营销、不用套话
+5. 语义去重（重要）：对照 existingPosts。若候选与其中任一条是同一新闻事件（同一融资轮次/同一产品发布/同一任命等），即使媒体不同、标题措辞不同、链接不同，也必须 accepted=false，并设 sameAsExisting=true，reason 写「与已有动态同一事件」
+6. 以下情况必须 accepted=false（sameAsExisting=false）：
    - 博彩/色情/刷单/无关聚合站/标题党垃圾
-   - 仅因人名常见而误匹配（如张三、李四）但公司对不上
-   - 信息不足以核对来源是否真实
-5. 只输出 JSON，不要 markdown`;
+   - 仅因人名常见而误匹配，但公司/正文对不上
+   - pageText 不足以核对是否为单篇真实报道
+   - 栏目页、标签页、作者页、搜索结果、文章列表、「综合报道」合集
+   - 「持续更新专栏」「定期发文」这类常青入口
+7. 只输出 JSON，不要 markdown`;
 
   const user = JSON.stringify({
     member: {
@@ -66,7 +86,15 @@ async function refineWithOpenAI({ member, item }) {
       company: member.company,
       title: member.title,
     },
-    source: item,
+    source: {
+      url: item.url,
+      searchTitle: item.title,
+      searchSnippet: item.snippet,
+      pageTitle: item.title,
+      pageText: String(item.pageText || '').slice(0, 4500),
+      publishedAt: item.publishedAt || null,
+    },
+    existingPosts: existing,
   });
 
   const body = {
@@ -76,7 +104,7 @@ async function refineWithOpenAI({ member, item }) {
       { role: 'system', content: system },
       {
         role: 'user',
-        content: `${user}\n\n请返回 JSON：{"accepted":boolean,"reason":string,"title":string,"content":string}`,
+        content: `${user}\n\n请返回 JSON：{"accepted":boolean,"sameAsExisting":boolean,"reason":string,"title":string,"content":string}`,
       },
     ],
   };
@@ -104,8 +132,13 @@ async function refineWithOpenAI({ member, item }) {
   const raw = data.choices?.[0]?.message?.content || '{}';
   const parsed = parseJsonLoose(raw);
 
+  const sameAsExisting = Boolean(parsed.sameAsExisting)
+    || /同一事件|语义重复|已有动态/.test(String(parsed.reason || ''));
+  const accepted = Boolean(parsed.accepted) && !sameAsExisting;
+
   return {
-    accepted: Boolean(parsed.accepted),
+    accepted,
+    sameAsExisting,
     reason: String(parsed.reason || ''),
     title: String(parsed.title || item.title || '').slice(0, 120),
     content: String(parsed.content || item.snippet || '').slice(0, 1200),
@@ -138,10 +171,24 @@ function parseJsonLoose(raw) {
   }
 }
 
-function refineMock({ member, item }) {
+function refineMock({ member, item, existingPosts = [] }) {
   const company = member.company || '相关公司';
   const name = member.name || '会员';
   const title = (item.title || '').replace(/\s+/g, ' ').trim() || `${company} 最新公开进展`;
+  const titleKey = title.slice(0, 24);
+  const dup = (existingPosts || []).find((p) => {
+    const t = String(p.title || '');
+    return titleKey && t.includes(titleKey.slice(0, 12));
+  });
+  if (dup) {
+    return {
+      accepted: false,
+      sameAsExisting: true,
+      reason: '与已有动态同一事件（mock）',
+      title: title.slice(0, 80),
+      content: '',
+    };
+  }
   const content = [
     `${company}（会员 ${name}）近期出现新的公开信息。`,
     (item.snippet || '').trim(),
@@ -153,6 +200,7 @@ function refineMock({ member, item }) {
 
   return {
     accepted: true,
+    sameAsExisting: false,
     reason: 'mock：本地模拟通过筛选',
     title: title.slice(0, 80),
     content,

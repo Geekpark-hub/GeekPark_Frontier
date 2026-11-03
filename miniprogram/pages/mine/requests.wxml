@@ -16,11 +16,19 @@
   </block>
 
   <block wx:else>
-    <view wx:for="{{items}}" wx:key="id" class="card">
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="card"
+      data-id="{{item.id}}"
+      bindtap="goDetail"
+      hover-class="press"
+    >
       <view class="row">
         <view class="chip">{{statusText[item.status] || item.status}}</view>
       </view>
       <view class="content">{{item.content}}</view>
+      <view class="meta" wx:if="{{item.startAt}}">时间：{{item.startAt}}</view>
       <view class="meta" wx:if="{{item.location}}">地点：{{item.location}}</view>
       <view class="meta" wx:if="{{item.connectWith}}">希望连接：{{item.connectWith}}</view>
     </view>

@@ -10,6 +10,10 @@
   margin-bottom: 16rpx;
 }
 
+.card.is-muted {
+  opacity: 0.72;
+}
+
 .row {
   display: flex;
   align-items: flex-start;
@@ -33,6 +37,11 @@
   font-size: 20rpx;
   color: #14202b;
   letter-spacing: 1rpx;
+}
+
+.chip-muted {
+  color: #8a8378;
+  border-color: rgba(20, 32, 43, 0.1);
 }
 
 .meta {

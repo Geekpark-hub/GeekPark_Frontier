@@ -49,20 +49,45 @@
             <strong>{{ member?.name || '管理员' }}</strong>
             <span>{{ roleLabel }}</span>
           </div>
+          <button class="logout" type="button" @click="openPwd">改密码</button>
           <button class="logout" type="button" @click="logout">退出</button>
         </div>
       </header>
 
+      <el-dialog v-model="pwdDialog" title="修改后台密码" width="420px" append-to-body>
+        <el-form label-position="top">
+          <el-form-item v-if="member?.hasAdminPassword" label="原密码">
+            <el-input v-model="oldPassword" type="password" show-password />
+          </el-form-item>
+          <el-form-item label="新密码（至少 6 位）">
+            <el-input v-model="newPassword" type="password" show-password />
+          </el-form-item>
+          <el-form-item label="确认密码">
+            <el-input v-model="newPassword2" type="password" show-password />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="pwdDialog = false">取消</el-button>
+          <el-button type="primary" :loading="pwdLoading" @click="savePassword">保存</el-button>
+        </template>
+      </el-dialog>
+
       <main class="content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive :max="14">
+            <component :is="Component" :key="route.path" />
+          </keep-alive>
+        </router-view>
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
+import api, { clearAdminSession } from '../api';
 import {
   startAiJobMonitor,
   stopAiJobMonitor,
@@ -74,6 +99,11 @@ const route = useRoute();
 const router = useRouter();
 const { currentRun, pendingAuto, isRunning } = useAiJobMonitorState();
 const aiRunning = isRunning;
+const pwdDialog = ref(false);
+const oldPassword = ref('');
+const newPassword = ref('');
+const newPassword2 = ref('');
+const pwdLoading = ref(false);
 
 const member = computed(() => {
   try {
@@ -82,6 +112,37 @@ const member = computed(() => {
     return null;
   }
 });
+
+function openPwd() {
+  oldPassword.value = '';
+  newPassword.value = '';
+  newPassword2.value = '';
+  pwdDialog.value = true;
+}
+
+async function savePassword() {
+  if (!newPassword.value || newPassword.value.length < 6) {
+    ElMessage.warning('密码至少 6 位');
+    return;
+  }
+  if (newPassword.value !== newPassword2.value) {
+    ElMessage.warning('两次密码不一致');
+    return;
+  }
+  pwdLoading.value = true;
+  try {
+    const body = { password: newPassword.value };
+    if (member.value?.hasAdminPassword) body.oldPassword = oldPassword.value;
+    const res = await api.post('/auth/admin-password', body);
+    if (res.member) localStorage.setItem('admin_member', JSON.stringify(res.member));
+    pwdDialog.value = false;
+    ElMessage.success('密码已更新');
+  } catch (e) {
+    ElMessage.error(e.message || '修改失败');
+  } finally {
+    pwdLoading.value = false;
+  }
+}
 
 const nav = computed(() => {
   const allowed = new Set(memberMenus(member.value));
@@ -96,8 +157,7 @@ const currentLabel = computed(() => {
 });
 
 const roleLabel = computed(() => {
-  if (member.value?.isSuperAdmin) return '超级管理员';
-  if (member.value?.isAdmin) return '管理员';
+  if (member.value?.isSuperAdmin || member.value?.isAdmin) return '管理员';
   return member.value?.company || '前沿社';
 });
 
@@ -122,14 +182,52 @@ function onNavigateHint() {
 }
 
 function logout() {
-  localStorage.removeItem('admin_token');
-  localStorage.removeItem('admin_member');
+  clearAdminSession();
   router.push('/login');
+}
+
+function prefetchMenuChunks() {
+  const loaders = [
+    () => import('./Members.vue'),
+    () => import('./WxEntries.vue'),
+    () => import('./Users.vue'),
+    () => import('./Feed.vue'),
+    () => import('./Briefs.vue'),
+    () => import('./Polls.vue'),
+    () => import('./Events.vue'),
+    () => import('./Requests.vue'),
+    () => import('./Analytics.vue'),
+    () => import('./NotifyLogs.vue'),
+    () => import('./AuditLogs.vue'),
+    () => import('./AiJobs.vue'),
+    () => import('./Sources.vue'),
+  ];
+  let i = 0;
+  const tick = () => {
+    if (i >= loaders.length) return;
+    const run = loaders[i++];
+    Promise.resolve()
+      .then(run)
+      .catch(() => {})
+      .finally(() => {
+        if (typeof window !== 'undefined' && window.requestIdleCallback) {
+          window.requestIdleCallback(tick, { timeout: 1200 });
+        } else {
+          setTimeout(tick, 120);
+        }
+      });
+  };
+  if (typeof window !== 'undefined' && window.requestIdleCallback) {
+    window.requestIdleCallback(tick, { timeout: 1800 });
+  } else {
+    setTimeout(tick, 400);
+  }
 }
 
 onMounted(() => {
   if (showAiChip.value) startAiJobMonitor();
   window.addEventListener('ai-feed-navigate', onNavigateHint);
+  prefetchMenuChunks();
 });
 
 onBeforeUnmount(() => {

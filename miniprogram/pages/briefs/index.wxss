@@ -1,0 +1,70 @@
+.head {
+  margin-bottom: 28rpx;
+}
+.eyebrow {
+  font-size: 20rpx;
+  letter-spacing: 3rpx;
+  color: #9a9286;
+}
+.title {
+  margin-top: 8rpx;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #14202b;
+}
+.desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #6d7883;
+  line-height: 1.5;
+}
+.card {
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  border: 1rpx solid rgba(20, 32, 43, 0.06);
+}
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #14202b;
+  line-height: 1.4;
+}
+.card-meta {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #9a9286;
+}
+.card-summary {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #6d7883;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.footer {
+  text-align: center;
+  padding: 24rpx 0 48rpx;
+  font-size: 22rpx;
+  color: #9a9286;
+}
+.state {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.state-text {
+  color: #8a8378;
+  font-size: 26rpx;
+}
+.state-action {
+  margin-top: 20rpx;
+  color: #14202b;
+  font-size: 26rpx;
+}

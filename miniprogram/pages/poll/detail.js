@@ -1,5 +1,9 @@
 const { request, formatDateTime } = require('../../utils/request');
-const { requireMemberOrBackHome } = require('../../utils/auth');
+const {
+  requireBrowseAccessOrBackHome,
+  ensureMemberForAction,
+  getAccessState,
+} = require('../../utils/auth');
 const { track } = require('../../utils/track');
 
 Page({
@@ -10,6 +14,8 @@ Page({
     endLabel: '',
     loading: true,
     error: '',
+    isPending: false,
+    isExpired: false,
   },
 
   onLoad(query) {
@@ -17,7 +23,13 @@ Page({
   },
 
   async onShow() {
-    if (!(await requireMemberOrBackHome())) return;
+    if (!(await requireBrowseAccessOrBackHome())) return;
+    const access = getAccessState();
+    this.setData({
+      isPending: access.kind === 'pending' || access.kind === 'inactive',
+      isExpired:
+        access.kind === 'inactive' && access.member && access.member.status === 'expired',
+    });
     if (this.data.id) this.load();
   },
 
@@ -52,7 +64,7 @@ Page({
 
   toggleOption(e) {
     const poll = this.data.poll;
-    if (!poll || poll.hasVoted) return;
+    if (!poll || poll.hasVoted || this.data.isPending) return;
     const id = e.currentTarget.dataset.id;
     let selectedMap = { ...this.data.selectedMap };
     if (poll.multiSelect) {
@@ -65,6 +77,7 @@ Page({
   },
 
   async submitVote() {
+    if (!(await ensureMemberForAction('投票'))) return;
     const optionIds = Object.keys(this.data.selectedMap);
     if (!optionIds.length) {
       wx.showToast({ title: '请选择选项', icon: 'none' });
@@ -74,6 +87,7 @@ Page({
       await request({
         url: `/polls/${this.data.id}/vote`,
         method: 'POST',
+        loading: true,
         data: { optionIds },
       });
       const app = getApp();

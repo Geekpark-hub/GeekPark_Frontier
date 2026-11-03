@@ -5,20 +5,12 @@ const {
   syncTabBar,
   hasActiveCachedAccess,
   isActiveMember,
+  syncSession,
 } = require('../../utils/auth');
 const { request } = require('../../utils/request');
 const { openExternalUrl, copyPlainText } = require('../../utils/openUrl');
 const { trackPage } = require('../../utils/track');
-
-function formatExpiresLabel(expiresAt) {
-  if (!expiresAt) return '';
-  const d = new Date(expiresAt);
-  if (Number.isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const mm = m < 10 ? `0${m}` : `${m}`;
-  return `会员有效期至 ${y}-${mm}`;
-}
+const { preloadTemplates, preloadQuota } = require('../../utils/subscribe');
 
 function readActiveCachedMember() {
   try {
@@ -37,7 +29,6 @@ Page({
   data: {
     member: cachedMember,
     phoneMasked: maskPhone(cachedMember && cachedMember.phone),
-    expiresLabel: formatExpiresLabel(cachedMember && cachedMember.expiresAt),
     hasLinks: Boolean(
       cachedMember &&
         (cachedMember.linkedin ||
@@ -47,7 +38,7 @@ Page({
           cachedMember.bilibili)
     ),
     showGate: !cachedMember,
-    gateMode: 'needPhone',
+    gateMode: 'needInvite',
     visitorMessage: '',
     checkedPhone: '',
     eventsDot: false,
@@ -63,16 +54,33 @@ Page({
     const app = getApp();
     this.applyAccess();
     if (app.globalData.sessionReady) await app.globalData.sessionReady;
+    // 若仍是待绑定，先拉一次同步（运营可能刚完成绑定）
+    if (app.globalData.gateMode === 'pending' || !app.globalData.member) {
+      await syncSession({ quiet: false });
+    }
     this.applyAccess();
     syncTabBar(2);
     if (this.data.showGate) return;
     trackPage('/pages/mine/index');
     this.loadMenuDots();
+    preloadTemplates();
+    preloadQuota();
   },
 
   applyAccess() {
     const state = getAccessState();
-    if (state.kind === 'member') {
+    // 待绑：不展示「我的」，送回动态；过期会员可进「我的」看档案
+    if (state.kind === 'pending') {
+      wx.showToast({ title: '开通会员后可使用', icon: 'none' });
+      wx.switchTab({
+        url: '/pages/feed/index',
+        complete() {
+          syncTabBar(0);
+        },
+      });
+      return;
+    }
+    if (state.kind === 'member' || state.kind === 'inactive') {
       const member = state.member || {};
       const hasLinks = Boolean(
         member.linkedin || member.wechatMp || member.xAccount || member.youtube || member.bilibili
@@ -81,7 +89,6 @@ Page({
         showGate: false,
         member,
         phoneMasked: maskPhone(member.phone),
-        expiresLabel: formatExpiresLabel(member.expiresAt),
         hasLinks,
         gateMode: 'member',
         visitorMessage: '',
@@ -94,7 +101,6 @@ Page({
       showGate: true,
       member: null,
       phoneMasked: '',
-      expiresLabel: '',
       hasLinks: false,
       eventsDot: false,
       requestsDot: false,
@@ -131,9 +137,12 @@ Page({
 
   onNotMember(e) {
     const detail = (e && e.detail) || {};
+    const kind = detail.kind || 'notMember';
+    const gateMode =
+      kind === 'inactive' ? 'inactive' : kind === 'needPhone' || kind === 'phoneAuth' ? 'needPhone' : 'notMember';
     this.setData({
       showGate: true,
-      gateMode: detail.kind === 'inactive' ? 'inactive' : 'notMember',
+      gateMode,
       visitorMessage: detail.message || '',
       checkedPhone: detail.phone || '',
     });

@@ -33,11 +33,18 @@ function buildQuery(member) {
   const name = (member.name || '').trim();
   const company = (member.company || '').trim();
   // 优先公司名，避免「张三」这类常见名搜出大量无关/垃圾站
+  // 注意：Serper 免费账号禁止查询里使用英文双引号精确匹配（会 400 Query pattern not allowed）
   let subject = '';
-  if (company && name) subject = `"${company}" "${name}"`;
-  else if (company) subject = `"${company}"`;
-  else if (name) subject = `"${name}"`;
+  if (company && name) subject = `${company} ${name}`;
+  else if (company) subject = company;
+  else if (name) subject = name;
   else subject = '前沿科技';
+  // 补一个 ASCII 别名（英文名/品牌），不加引号
+  const alias = String(member.rssKeywords || '')
+    .split(/[;；,，|]/)
+    .map((s) => s.trim())
+    .find((s) => s && s !== name && s !== company && /^[\x20-\x7E]+$/.test(s) && s.length >= 3);
+  if (alias) subject = `${subject} ${alias}`;
   return `${subject} (融资 OR 发布 OR 合作 OR 上市 OR 任命 OR 采访 OR 产品 OR launch OR funding)`;
 }
 
@@ -74,13 +81,15 @@ async function searchSerper(query, { limit }) {
   const key = process.env.SERPER_API_KEY || process.env.SEARCH_API_KEY;
   if (!key) throw new Error('缺少 SERPER_API_KEY / SEARCH_API_KEY');
 
+  // Serper 单页通常最多 10 条；免费账号对部分高级写法更敏感
+  const num = Math.min(Math.max(Number(limit) || 5, 1), 10);
   const res = await fetch('https://google.serper.dev/search', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-API-KEY': key,
     },
-    body: JSON.stringify({ q: query, num: limit, tbs: 'qdr:m' }),
+    body: JSON.stringify({ q: query, num, tbs: 'qdr:m' }),
   });
   if (!res.ok) {
     const text = await res.text();

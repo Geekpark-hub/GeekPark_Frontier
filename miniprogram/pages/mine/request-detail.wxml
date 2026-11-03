@@ -1,0 +1,39 @@
+<view class="container sub-page" wx:if="{{ready}}">
+  <view class="state" wx:if="{{loading}}">
+    <view class="state-text">加载中…</view>
+  </view>
+
+  <block wx:elif="{{error}}">
+    <view class="state">
+      <view class="state-text">{{error}}</view>
+      <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{item}}">
+    <view class="status-row">
+      <view class="chip">{{statusText[item.status] || item.status}}</view>
+      <view class="time" wx:if="{{createdLabel}}">{{createdLabel}}</view>
+    </view>
+
+    <view class="block">
+      <view class="label">需求内容</view>
+      <view class="body">{{item.content}}</view>
+    </view>
+
+    <view class="block" wx:if="{{item.startAt}}">
+      <view class="label">时间</view>
+      <view class="body soft">{{item.startAt}}</view>
+    </view>
+
+    <view class="block" wx:if="{{item.location}}">
+      <view class="label">地点</view>
+      <view class="body soft">{{item.location}}</view>
+    </view>
+
+    <view class="block" wx:if="{{item.connectWith}}">
+      <view class="label">希望连接的人 / 资源</view>
+      <view class="body soft">{{item.connectWith}}</view>
+    </view>
+  </block>
+</view>

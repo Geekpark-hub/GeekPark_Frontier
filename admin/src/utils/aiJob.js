@@ -5,7 +5,7 @@ import { refreshAiJobStatus } from '../stores/aiJobMonitor';
 /**
  * 只负责启动后台任务；进度与完成通知由 Layout 全局监听。
  */
-export async function startAiFeedJob({ limitPerMember = 2 } = {}) {
+export async function startAiFeedJob({ limitPerMember = 10 } = {}) {
   const start = await api.post('/admin/ai/run-feed', { limitPerMember, async: true });
   await refreshAiJobStatus();
 

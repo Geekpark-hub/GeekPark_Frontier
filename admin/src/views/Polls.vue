@@ -3,13 +3,18 @@
     <div class="toolbar">
       <div>
         <h2>社群投票</h2>
-        <p class="muted">创建、发布与查看会员投票结果</p>
+        <p class="muted">进行中投票会置顶信息流，直到后台点「结束」；「分享」生成落地页短链与小程序码</p>
       </div>
       <div class="toolbar-actions">
+        <el-select v-model="status" clearable placeholder="全部状态" style="width: 140px" @change="resetAndLoad">
+          <el-option label="草稿" value="draft" />
+          <el-option label="进行中" value="published" />
+          <el-option label="已结束" value="ended" />
+        </el-select>
         <el-button type="primary" @click="openCreate">创建投票</el-button>
       </div>
     </div>
-    <el-table :data="list" stripe empty-text="暂无投票">
+    <el-table :data="list" stripe empty-text="暂无投票" v-loading="loading">
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
@@ -25,16 +30,18 @@
       <el-table-column label="票数" width="80">
         <template #default="{ row }">{{ row._count?.votes || 0 }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button v-if="row.status !== 'published'" link type="success" @click="setStatus(row, 'published')">发布</el-button>
           <el-button v-if="row.status === 'published'" link type="warning" @click="setStatus(row, 'ended')">结束</el-button>
+          <el-button link @click="openShare(row)">分享</el-button>
           <el-button link @click="showResults(row)">结果</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
+    <ListPager v-model:page="page" :page-size="pageSize" :total="total" @update:page="onPage" />
 
     <el-dialog
       v-model="visible"
@@ -105,20 +112,100 @@
         <p v-else class="muted">暂无投票记录</p>
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="shareVisible"
+      title="分享投票"
+      width="560px"
+      append-to-body
+      align-center
+      destroy-on-close
+    >
+      <p class="muted share-tip">
+        打开后进入独立投票落地页。短链固定对应本投票（可发短信 / 邮件 / 网页）；打开时由服务端跳转微信，微信侧约 30 天自动续期，对外链接不变。小程序码可印海报或发群。
+      </p>
+      <el-form label-position="top">
+        <el-form-item label="分享短链">
+          <p v-if="shareForm.urlLinkError" class="muted share-tip">{{ shareForm.urlLinkError }}</p>
+          <div class="share-row">
+            <el-input :model-value="shareForm.urlLink" readonly placeholder="生成中…" />
+            <el-button
+              type="primary"
+              :loading="shareLoading"
+              :disabled="!shareForm.urlLink"
+              @click="copyText(shareForm.urlLink, '已复制分享短链')"
+            >复制</el-button>
+          </div>
+          <p v-if="shareForm.wxExpiresLabel" class="muted share-tip share-expire">
+            微信跳转有效至 {{ shareForm.wxExpiresLabel }}（到期后打开短链会自动续期）
+          </p>
+        </el-form-item>
+        <el-form-item label="小程序路径">
+          <div class="share-row">
+            <el-input :model-value="shareForm.path" readonly />
+            <el-button @click="copyText(shareForm.path, '已复制小程序路径')">复制</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="小程序码">
+          <div v-if="shareForm.qrcodeDataUrl" class="share-qr">
+            <img :src="shareForm.qrcodeDataUrl" alt="投票小程序码" />
+            <el-button link type="primary" @click="downloadQr(shareForm.qrcodeDataUrl, shareForm.title || '投票')">
+              下载小程序码
+            </el-button>
+          </div>
+          <p v-else class="muted">{{ shareForm.qrcodeError || '生成短链时一并拉取；未正式发布时将尝试生成体验版小程序码' }}</p>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="shareVisible = false">关闭</el-button>
+        <el-button :loading="shareLoading" @click="refreshWxJump">刷新微信跳转</el-button>
+        <el-button
+          type="primary"
+          :loading="shareLoading"
+          :disabled="!shareForm.urlLink"
+          @click="copyText(shareForm.urlLink, '已复制分享短链')"
+        >复制短链</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '../api';
+import ListPager from '../components/ListPager.vue';
+import { DEFAULT_PAGE_SIZE, pageParams } from '../utils/listPage';
+import {
+  beijingPickerToUtc,
+  formatBeijingDateTime,
+  utcToBeijingPicker,
+} from '../utils/datetime';
+import { useListRefresh } from '../utils/useListRefresh';
 
 const list = ref([]);
+const loading = ref(false);
+const page = ref(1);
+const pageSize = DEFAULT_PAGE_SIZE;
+const total = ref(0);
+const status = ref('');
 const visible = ref(false);
 const resultVisible = ref(false);
 const results = ref(null);
 const voters = ref([]);
 const saving = ref(false);
+const shareVisible = ref(false);
+const shareLoading = ref(false);
+const shareForm = reactive({
+  id: '',
+  title: '',
+  urlLink: '',
+  urlLinkError: '',
+  wxExpiresLabel: '',
+  path: '',
+  qrcodeDataUrl: '',
+  qrcodeError: '',
+});
 const form = reactive(emptyForm());
 const statusText = {
   draft: '草稿',
@@ -135,20 +222,33 @@ function emptyForm() {
     description: '',
     multiSelect: false,
     showVoters: false,
-    startAt: now.toISOString(),
-    endAt: end.toISOString(),
+    startAt: utcToBeijingPicker(now),
+    endAt: utcToBeijingPicker(end),
     status: 'draft',
     options: ['同意', '不同意', '暂缓'],
   };
 }
 
 function formatDateTime(v) {
-  return v ? new Date(v).toLocaleString() : '-';
+  return formatBeijingDateTime(v);
 }
 
 async function load() {
-  const res = await api.get('/admin/polls');
-  list.value = res.polls;
+  loading.value = true;
+  try {
+    const params = { ...pageParams(page.value, pageSize) };
+    if (status.value) params.status = status.value;
+    const res = await api.get('/admin/polls', { params });
+    list.value = res.polls || [];
+    total.value = res.total || 0;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function resetAndLoad() {
+  page.value = 1;
+  load();
 }
 
 function openCreate() {
@@ -163,8 +263,8 @@ function openEdit(row) {
     description: row.description,
     multiSelect: row.multiSelect,
     showVoters: row.showVoters,
-    startAt: row.startAt,
-    endAt: row.endAt,
+    startAt: utcToBeijingPicker(row.startAt),
+    endAt: utcToBeijingPicker(row.endAt),
     status: row.status,
     options: (row.options || []).map((o) => o.text),
   });
@@ -179,8 +279,8 @@ async function save() {
       description: form.description,
       multiSelect: form.multiSelect,
       showVoters: form.showVoters,
-      startAt: form.startAt,
-      endAt: form.endAt,
+      startAt: beijingPickerToUtc(form.startAt),
+      endAt: beijingPickerToUtc(form.endAt),
       status: form.status,
       options: form.options.filter(Boolean),
     };
@@ -202,6 +302,83 @@ async function setStatus(row, status) {
   await load();
 }
 
+async function copyText(text, okMsg = '已复制') {
+  const v = String(text || '').trim();
+  if (!v) return;
+  try {
+    await navigator.clipboard.writeText(v);
+    ElMessage.success(okMsg);
+  } catch {
+    ElMessage.info(v);
+  }
+}
+
+function wxExpiresLabelOf(v) {
+  if (!v) return '';
+  const label = formatBeijingDateTime(v);
+  return label === '-' ? '' : label;
+}
+
+async function openShare(row) {
+  shareForm.id = row.id;
+  shareForm.title = row.title || '';
+  shareForm.path = `/pages/poll/share?id=${row.id}`;
+  shareForm.urlLink = '';
+  shareForm.urlLinkError = '';
+  shareForm.wxExpiresLabel = '';
+  shareForm.qrcodeDataUrl = '';
+  shareForm.qrcodeError = '';
+  shareVisible.value = true;
+  await genShareLink({ quiet: true, autoCopy: false });
+}
+
+async function refreshWxJump() {
+  await genShareLink({ quiet: false, autoCopy: false, forceRefresh: true });
+  if (shareForm.urlLink) {
+    ElMessage.success('已刷新微信跳转；对外短链不变');
+  }
+}
+
+async function genShareLink({ quiet = false, autoCopy = true, forceRefresh = false } = {}) {
+  if (!shareForm.id) return;
+  shareLoading.value = true;
+  try {
+    const res = await api.post(`/admin/polls/${shareForm.id}/share-link`, { forceRefresh });
+    shareForm.urlLink = res.urlLink || '';
+    shareForm.urlLinkError = res.urlLinkError || '';
+    shareForm.wxExpiresLabel = wxExpiresLabelOf(res.wxExpiresAt);
+    shareForm.path = res.path || shareForm.path;
+    shareForm.qrcodeDataUrl = res.qrcodeDataUrl || '';
+    shareForm.qrcodeError = res.qrcodeError || '';
+    if (quiet) {
+      if (!shareForm.urlLink && shareForm.urlLinkError) {
+        ElMessage.warning(shareForm.urlLinkError);
+      } else if (!shareForm.urlLink && shareForm.qrcodeDataUrl) {
+        ElMessage.success('短链暂不可用，已生成体验版小程序码');
+      }
+      return;
+    }
+    if (autoCopy && shareForm.urlLink) {
+      await copyText(shareForm.urlLink, '已复制分享短链，可发给别人');
+    } else if (!shareForm.urlLink && shareForm.qrcodeDataUrl) {
+      ElMessage.success('短链暂不可用，已生成体验版小程序码');
+    } else if (shareForm.urlLinkError) {
+      ElMessage.warning(shareForm.urlLinkError);
+    }
+  } catch (e) {
+    ElMessage.error(e?.message || '生成失败（需已发布小程序且开通 URL Link）');
+  } finally {
+    shareLoading.value = false;
+  }
+}
+
+function downloadQr(dataUrl, name) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `${String(name || 'share').slice(0, 40)}-小程序码.png`;
+  a.click();
+}
+
 async function showResults(row) {
   const res = await api.get(`/admin/polls/${row.id}/results`);
   results.value = res.results;
@@ -210,13 +387,23 @@ async function showResults(row) {
 }
 
 async function remove(row) {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？`, '提示');
-  await api.delete(`/admin/polls/${row.id}`);
-  ElMessage.success('已删除');
-  await load();
+  try {
+    await ElMessageBox.confirm(`确认删除「${row.title}」？`, '提示');
+    await api.delete(`/admin/polls/${row.id}`);
+    ElMessage.success('已删除');
+    await load();
+  } catch (e) {
+    if (e === 'cancel' || e === 'close') return;
+    ElMessage.error(e?.message || '删除失败');
+  }
 }
 
-onMounted(load);
+function onPage(p) {
+  page.value = p;
+  load();
+}
+
+useListRefresh(load);
 </script>
 
 <style scoped>
@@ -250,5 +437,36 @@ onMounted(load);
   margin: 20px 0 10px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.share-tip {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.share-expire {
+  margin: 8px 0 0;
+}
+
+.share-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.share-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.share-qr img {
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: #fff;
 }
 </style>

@@ -9,35 +9,53 @@
 
 <view class="container events-page" wx:if="{{!showGate && ready}}">
   <view class="tabs">
-    <view class="tab {{tab === 'upcoming' ? 'on' : ''}}" data-tab="upcoming" bindtap="switchTab">即将举行</view>
+    <view class="tab {{tab === 'upcoming' ? 'on' : ''}}" data-tab="upcoming" bindtap="switchTab">进行中 / 即将</view>
     <view class="tab {{tab === 'past' ? 'on' : ''}}" data-tab="past" bindtap="switchTab">已结束</view>
   </view>
 
-  <view
-    wx:for="{{list}}"
-    wx:key="id"
-    class="cover-card"
-    data-id="{{item.id}}"
-    bindtap="goDetail"
-    hover-class="press"
-  >
-    <image class="cover" src="{{item.coverDisplay}}" mode="aspectFill" lazy-load />
-    <view class="cover-veil"></view>
-    <view class="cover-body">
-      <view class="cover-tag" wx:if="{{tab === 'past'}}">已结束</view>
-      <view class="cover-tag" wx:elif="{{item.myStatus}}">{{statusText[item.myStatus]}}</view>
-      <view class="cover-title">{{item.title}}</view>
-      <view class="cover-meta">{{item.timeLabel}}</view>
-      <view class="cover-meta">{{item.location || '地点待定'}}</view>
+  <!-- 首次进入：骨架屏，替代整页 loading -->
+  <view wx:if="{{pageLoading}}" class="sk-page">
+    <view class="sk-card" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="sk sk-cover"></view>
+      <view class="sk-card-body">
+        <view class="sk sk-line lg"></view>
+        <view class="sk sk-line md"></view>
+        <view class="sk sk-line sm"></view>
+      </view>
     </view>
   </view>
 
-  <view wx:if="{{!list.length}}" class="empty">
-    <view class="collage">
-      <image class="c c1" src="/assets/brand/scene-2.jpg" mode="aspectFill" />
-      <image class="c c2" src="/assets/brand/scene-1.jpg" mode="aspectFill" />
-      <image class="c c3" src="/assets/brand/scene-3.jpg" mode="aspectFill" />
+  <block wx:else>
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      class="event-card"
+      data-id="{{item.id}}"
+      bindtap="goDetail"
+      hover-class="press"
+    >
+      <view class="event-cover" wx:if="{{item.coverDisplay}}">
+        <image class="cover-img" src="{{item.coverDisplay}}" mode="widthFix" lazy-load />
+        <view class="cover-tag" wx:if="{{item.coverTag}}">{{item.coverTag}}</view>
+      </view>
+      <view class="event-body">
+        <view class="event-main">
+          <view class="event-status" wx:if="{{item.coverTag && !item.coverDisplay}}">{{item.coverTag}}</view>
+          <view class="event-title">{{item.title}}</view>
+          <view class="event-meta">{{item.timeLabel}}</view>
+          <view class="event-meta">{{item.location || '地点待定'}}</view>
+        </view>
+        <view class="event-arrow" aria-hidden="true"></view>
+      </view>
     </view>
-    <view class="empty-text">暂无活动</view>
-  </view>
+
+    <view wx:if="{{!list.length}}" class="empty">
+      <view class="collage">
+        <image class="c c1" src="/assets/brand/scene-2.jpg" mode="aspectFill" />
+        <image class="c c2" src="/assets/brand/scene-1.jpg" mode="aspectFill" />
+        <image class="c c3" src="/assets/brand/scene-3.jpg" mode="aspectFill" />
+      </view>
+      <view class="empty-text">暂无活动</view>
+    </view>
+  </block>
 </view>

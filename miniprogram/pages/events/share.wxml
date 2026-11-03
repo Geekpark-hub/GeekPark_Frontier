@@ -1,0 +1,125 @@
+<member-gate
+  visible="{{showGate}}"
+  mode="{{gateMode}}"
+  message="{{visitorMessage}}"
+  phone="{{checkedPhone}}"
+  bind:activated="onActivated"
+  bind:notmember="onNotMember"
+/>
+
+<view class="share-page state" wx:if="{{!showGate && loading}}">
+  <view class="state-text">加载中…</view>
+</view>
+
+<view class="share-page state" wx:elif="{{!showGate && error}}">
+  <view class="state-text">{{error}}</view>
+  <view class="state-action" bindtap="retry" hover-class="press">重试</view>
+</view>
+
+<view class="share-page" wx:elif="{{!showGate && event}}">
+  <view class="hero" wx:if="{{coverUrl}}">
+    <image class="hero-cover" src="{{coverUrl}}" mode="aspectFill" />
+    <view class="hero-veil"></view>
+    <view class="hero-brand">
+      <text class="brand-en">THE FRONTIER</text>
+      <text class="brand-zh">前沿社</text>
+    </view>
+  </view>
+
+  <view class="body">
+    <view class="eyebrow">活动报名</view>
+    <view class="title">{{event.title}}</view>
+
+    <view class="meta-list">
+      <view class="meta-row">
+        <text class="meta-k">时间</text>
+        <text class="meta-v">{{timeLabel}}</text>
+      </view>
+      <view
+        class="meta-row {{event.location ? 'is-link' : ''}}"
+        bindtap="openLocation"
+        hover-class="{{event.location ? 'press' : ''}}"
+      >
+        <text class="meta-k">地点</text>
+        <text class="meta-v">{{event.location || '地点待定'}}</text>
+      </view>
+      <view class="meta-row" wx:if="{{deadlineLabel}}">
+        <text class="meta-k">截止</text>
+        <text class="meta-v">报名截止 {{deadlineLabel}}</text>
+      </view>
+    </view>
+
+    <view class="block" wx:if="{{event.description}}">
+      <view class="label">活动介绍</view>
+      <view class="text">{{event.description}}</view>
+    </view>
+
+    <view class="block" wx:if="{{agendaLines.length}}">
+      <view class="label">活动议程</view>
+      <view class="line-list">
+        <view wx:for="{{agendaLines}}" wx:key="*this" class="line-item">
+          <view class="dot"></view>
+          <text>{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="block" wx:if="{{guestLines.length}}">
+      <view class="label">嘉宾信息</view>
+      <view class="line-list">
+        <view wx:for="{{guestLines}}" wx:key="*this" class="line-item">
+          <view class="dot"></view>
+          <text>{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="block" wx:if="{{myRegistration && myRegistration.status !== 'cancelled'}}">
+      <view class="label">我的报名</view>
+      <view class="reg-card">
+        <view class="reg-card-main">
+          <view class="reg-status">{{regStatusText}}</view>
+          <view class="reg-meta" wx:if="{{myRegistration.name || myRegistration.companions}}">
+            <text wx:if="{{myRegistration.name}}">{{myRegistration.name}}</text>
+            <text wx:if="{{myRegistration.name && myRegistration.companions}}"> · </text>
+            <text wx:if="{{myRegistration.companions}}">随行 {{myRegistration.companions}}</text>
+          </view>
+        </view>
+        <view
+          class="reg-cancel"
+          wx:if="{{canCancel}}"
+          bindtap="cancelRegister"
+          hover-class="press"
+        >{{cancelling ? '取消中…' : '取消报名'}}</view>
+        <view class="reg-hint" wx:elif="{{ended}}">活动已结束，无法取消</view>
+      </view>
+    </view>
+
+    <view class="block" wx:if="{{canRegister}}">
+      <view class="label">报名信息</view>
+      <view class="form-item">
+        <view class="form-label">姓名</view>
+        <input class="input" value="{{form.name}}" data-key="name" bindinput="onInput" />
+      </view>
+      <view class="form-item">
+        <view class="form-label">随行人员</view>
+        <input class="input" value="{{form.companions}}" data-key="companions" bindinput="onInput" placeholder="选填" />
+      </view>
+      <view class="form-item">
+        <view class="form-label">特殊需求</view>
+        <textarea class="textarea" value="{{form.specialNeeds}}" data-key="specialNeeds" bindinput="onInput" placeholder="选填" />
+      </view>
+      <button class="btn-primary submit" bindtap="submit">确认报名参加</button>
+    </view>
+
+    <view class="action-lock" wx:if="{{pendingNeedMember}}">
+      <view class="action-lock-title">{{isExpired ? '会员已过期' : '待运营绑定会员'}}</view>
+      <view class="action-lock-desc">{{isExpired ? '续期后即可报名本活动' : '绑定完成后即可报名本活动'}}</view>
+    </view>
+    <view class="done" wx:elif="{{!canRegister && ended}}">活动已结束</view>
+    <view
+      class="done"
+      wx:elif="{{!canRegister && deadlinePassed && !(myRegistration && myRegistration.status !== 'cancelled')}}"
+    >报名已截止</view>
+  </view>
+</view>
